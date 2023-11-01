@@ -1,0 +1,53 @@
+provider:
+  type: "completion"
+  input_variables: ["question", "A", "B", "C", "D"]
+  output_parser: json
+  settings:
+    llm:
+      provider: "openai"
+      model: "gpt-3.5-turbo-instruct"
+      kwargs:
+        temperature: 0.1
+    prompt: |
+      ## Instruction
+
+      仔细阅读以下问题，并选择正确答案。
+
+      问题："{{question}}"
+
+      候选答案：
+      A: "{{A}}"
+      B: "{{B}}"
+      C: "{{C}}"
+      D: "{{D}}"
+
+      ## Output format
+
+      输出为 Markdown JSON 格式，输出参考：
+
+      ```json
+      {
+          "reasoning": "<此处填写思考过程>",
+          "choice": "<此处仅填写最终选项，为 A、B、C、D 中的一个>"
+      }
+      ```
+
+      ## Output
+      输出（Markdown JSON 格式）：
+input_dataset_name: "ceval-with-answer.jsonl"
+evaluator:
+  type: PYTHON_CODE
+  input_keys: ["answer"]
+  output_keys: ["choice"]
+  eval_keys: ["score"]
+  settings:
+    code: |
+      import json
+      import sys
+      kwargs = json.load(sys.stdin)
+      score = int(kwargs["choice"] == kwargs["answer"])
+      print(json.dumps({"score": score}))
+run_config:
+  parallelism: 5  # 并发度
+  timeout: 30 # 超时时间
+  rounds: 2 # 评测轮数
