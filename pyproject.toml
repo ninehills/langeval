@@ -27,7 +27,8 @@ dependencies = [
   "numpy ~= 1.26",
   "pydantic < 2",
   "jinja2",
-  "pandas"
+  "pandas",
+  "PyYAML"
 ]
 
 [project.urls]
@@ -37,6 +38,9 @@ Source = "https://github.com/ninehills/langeval"
 
 [project.scripts]
 langeval = "langeval.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/langeval"]
 
 [tool.hatch.version]
 path = "src/langeval/__about__.py"
