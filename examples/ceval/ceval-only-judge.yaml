@@ -1,0 +1,47 @@
+input_dataset_name: "ceval-with-answer.jsonl"
+evaluator:
+  type: LLM_GRADE
+  input_keys: ["question", "A", "B", "C", "D"]
+  output_keys: ["answer"]
+  eval_keys: ["reasoning", "right_answer", "score"]
+  settings:
+    llm:
+      provider: "openai"
+      model: "gpt-4"
+      kwargs:
+        temperature: 0.5
+    prompt: |
+      你是一名教师，接下来你需要根据【问题】和【选项】，来评价【学生答案】的评分。
+
+      # 评分过程
+
+      1. 首先你应该先根据【问题】和【选项】得到你自己的答案。
+      2. 给出对【学生答案】的评分。（0代表错误，1代表正确）。
+
+      # 输入
+
+      问题："{{ question }}"
+      选项：
+      A: "{{A}}"
+      B: "{{B}}"
+      C: "{{C}}"
+      D: "{{D}}"
+      学生答案："{{ answer }}"
+
+      # 输出
+
+      输出为 Markdown JSON 格式的字符串，示例：
+
+      ```json
+      {
+          "reasoning": "<此处填写你对题目的思考过程>",
+          "right_answer": "<此处填写你的答案，为 A、B、C、D 中的一个>"
+          "score": <此处是你对学生答案的打分，0为错误，1为正确>
+      }
+      ```
+
+      输出（Markdown JSON 格式）：
+run_config:
+  parallelism: 5  # 并发度
+  timeout: 30 # 超时时间
+  rounds: 1 # 评测轮数

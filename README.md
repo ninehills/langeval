@@ -35,7 +35,7 @@ TODO
 
 ## How to use
 
-see `./examples/ceval/ceval-zh.ipynb`
+see `./examples` for more details.
 
 ## Development
 
@@ -70,3 +70,4 @@ hatch publish
 - multi-eval
 - run retry
 - rerun failed task
+- refactor task run for lib call

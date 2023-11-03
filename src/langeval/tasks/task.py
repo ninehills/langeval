@@ -132,7 +132,7 @@ class EvalTask(BaseModel):
             except Exception as e:
                 logger.debug(f"evaluator call failed: {e}", exc_info=True)
                 result.eval_error = str(e)
-        result.eval_elapsed_secs = (datetime.utcnow() - start).total_seconds()
+            result.eval_elapsed_secs = (datetime.utcnow() - start).total_seconds()
         return result
 
     def split_dataset(self) -> list[dict[str, Any]]:
