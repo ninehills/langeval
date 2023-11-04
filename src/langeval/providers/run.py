@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import subprocess
 from typing import Any
 
@@ -70,7 +71,10 @@ def call_exec(conf: Provider, inputs: dict[str, Any], timeout: int) -> dict[str,
         raise ProviderRunError(f"call_exec invalid provider config: {conf}")
     command = conf.settings.command
     kwargs = conf.settings.kwargs or {}
-    env = kwargs.get("env") or {}
+    # Copy progress env.
+    env = os.environ.copy()
+    if kwargs.get("env"):
+        env.update(kwargs["env"])
     cwd = kwargs.get("cwd") or None
     exec_timeout = int(kwargs.get("timeout", 300))  # type: ignore
     timeout = min(timeout, exec_timeout)

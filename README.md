@@ -63,9 +63,13 @@ hatch publish
 
 ## TODO
 
-- more eval metrics
-- support openai function
-- docs
-- test
-- multi evaluator
-- lib call
+| Priority | Description |
+| -------- | ----------- |
+| High     |    Re-run failed task.         |
+| High     | Better Custom Provider. |
+| Medium | Documents |
+| Medium | Test |
+| Low | Support multi evaluator in one task. |
+| Low | Support run task from Python code. |
+| Low | Display task status in web. |
+| Low     |    Support OpenAI function calling. |

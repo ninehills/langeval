@@ -6,8 +6,6 @@ provider:
     command: "python3 rag.py"
     kwargs:
       timeout: 50
-      env:
-        OPENAI_API_KEY: "sk-xxxxxx"
 input_dataset_name: "cmrc-eval-zh.jsonl"
 run_config:
   parallelism: 5  # 并发度
