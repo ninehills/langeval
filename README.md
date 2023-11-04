@@ -67,7 +67,5 @@ hatch publish
 - support openai function
 - docs
 - test
-- multi-eval
-- run retry
-- rerun failed task
-- refactor task run for lib call
+- multi evaluator
+- lib call

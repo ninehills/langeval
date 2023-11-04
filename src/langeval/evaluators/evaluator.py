@@ -1,13 +1,16 @@
 """Evaluator Types"""
 import enum
+import logging
 from typing import Any, Optional, Union
 
 import yaml
 from pydantic import BaseModel, validator
 
 from langeval.evaluators.exception import EvalRunError
+from langeval.evaluators.rag import Rag
 from langeval.models import LLM, Embedding
 
+logger = logging.getLogger(__name__)
 
 def represent_multiline_text(dumper, data):
     if "\n" in data:
@@ -25,9 +28,7 @@ class EvaluatorType(str, enum.Enum):
     LLM_GRADE = "LLM_GRADE"
     EMBEDDING_COS_SIM = "EMBEDDING_COS_SIM"
     PYTHON_CODE = "PYTHON_CODE"
-
-
-EvaluatorTypeList = list(EvaluatorType)
+    RAG = "RAG"
 
 
 class LLMGrade(BaseModel):
@@ -37,11 +38,19 @@ class LLMGrade(BaseModel):
 
 class EmbeddingCosSim(BaseModel):
     embedding: Embedding
-    cos_sim_threshold: float = 0.9
+    cos_sim_threshold: float
 
 
 class PythonCode(BaseModel):
     code: str
+
+
+EvaluatorSettings = {
+    EvaluatorType.LLM_GRADE: LLMGrade,
+    EvaluatorType.EMBEDDING_COS_SIM: EmbeddingCosSim,
+    EvaluatorType.PYTHON_CODE: PythonCode,
+    EvaluatorType.RAG: Rag,
+}
 
 
 class Evaluator(BaseModel):
@@ -56,7 +65,7 @@ class Evaluator(BaseModel):
     # Type
     type: EvaluatorType  # noqa: A003
     # Detail config
-    settings: Optional[Union[LLMGrade, EmbeddingCosSim, PythonCode]] = None
+    settings: Optional[Union[Rag, LLMGrade, EmbeddingCosSim, PythonCode]] = None
 
     class Config:
         validate_assignment = True
@@ -66,31 +75,22 @@ class Evaluator(BaseModel):
 
     @classmethod
     def from_yaml(cls, yaml_str: str) -> Optional["Evaluator"]:
-        if yaml_str != "":
+        if yaml_str == "":
             return None
-        else:
-            obj = yaml.load(yaml_str, Loader=yaml.FullLoader)  # noqa: S506
-            settings = None
-            if obj["type"] == str(EvaluatorType.LLM_GRADE):
-                settings = LLMGrade(**obj["settings"])
-            elif obj["type"] == str(EvaluatorType.EMBEDDING_COS_SIM):
-                settings = EmbeddingCosSim(**obj["settings"])
-            elif obj["type"] == str(EvaluatorType.PYTHON_CODE):
-                settings = PythonCode(**obj["settings"])
 
-            obj["settings"] = settings
+        obj = yaml.load(yaml_str, Loader=yaml.FullLoader)  # noqa: S506
         return cls(**obj)
 
     @validator("type")
     def type_must_be_valid(cls, v):  # noqa: N805
-        if EvaluatorType(v) not in EvaluatorTypeList:
+        if EvaluatorType(v) not in EvaluatorSettings.keys():
             raise ValueError(f"Invalid type: {v}")
         return v
 
     def call(self, inputs: dict[str, Any], outputs: dict[str, Any], timeout=10, default_llm=None) -> dict[str, Any]:
         """Do eval"""
+        from langeval.evaluators.rag import eval_rag
         from langeval.evaluators.run import eval_embedding_cos_sim, eval_llm_grade, eval_python_code
-
         kwargs = {}
         for k in self.input_keys:
             if k not in inputs:
@@ -107,12 +107,20 @@ class Evaluator(BaseModel):
                 msg = f"eval input missing key: {k}"
                 raise EvalRunError(msg)
 
-        if self.type == EvaluatorType.LLM_GRADE:
-            return eval_llm_grade(self, kwargs, timeout, default_llm)
-        elif self.type == EvaluatorType.EMBEDDING_COS_SIM:
-            return eval_embedding_cos_sim(self, kwargs, timeout)
-        elif self.type == EvaluatorType.PYTHON_CODE:
-            return eval_python_code(self, kwargs, timeout)
-        else:
-            msg = f"eval type not supported: {self.type}"
-            raise EvalRunError(msg)
+        try:
+            if self.type == EvaluatorType.LLM_GRADE:
+                return eval_llm_grade(self, kwargs, timeout, default_llm)
+            elif self.type == EvaluatorType.EMBEDDING_COS_SIM:
+                return eval_embedding_cos_sim(self, kwargs, timeout)
+            elif self.type == EvaluatorType.PYTHON_CODE:
+                return eval_python_code(self, kwargs, timeout)
+            elif self.type == EvaluatorType.RAG:
+                if self.settings is None or type(self.settings) != Rag:
+                    raise EvalRunError(f"RAG settings is not specified: {self.settings}")
+                return eval_rag(self.settings, kwargs, timeout, default_llm)
+        except Exception as e:
+            logger.exception(f"eval failed: {e}")
+            logger.debug(f"evaluator {self} eval failed: {e}", exc_info=True)
+            raise EvalRunError(f"eval failed: {e}") from e
+
+        raise EvalRunError(f"eval type not supported: {self.type}")

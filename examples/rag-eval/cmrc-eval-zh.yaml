@@ -1,0 +1,30 @@
+provider:
+  type: "execute"
+  input_variables: ["question"]
+  output_parser: json
+  settings:
+    command: "python3 rag.py"
+    kwargs:
+      timeout: 50
+      env:
+        OPENAI_API_KEY: "sk-xxxxxx"
+input_dataset_name: "cmrc-eval-zh.jsonl"
+run_config:
+  parallelism: 5  # 并发度
+  timeout: 60 # 超时时间
+  rounds: 1 # 评测轮数
+evaluator:
+  type: RAG
+  input_keys: ["question", "reference_answer", "reference_context"]
+  output_keys: ["answer", "contexts"]
+  eval_keys: []
+  settings:
+    metrics: ["retrieval_recall", "answer_similarity", "answer_correctness"]
+    llm:
+      provider: "openai"
+      model: "gpt-4"
+      kwargs:
+        temperature: 0.2
+    embedding:
+      provider: "openai"
+      model: "text-embedding-ada-002"

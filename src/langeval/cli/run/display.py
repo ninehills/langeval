@@ -8,12 +8,21 @@ from langeval.cli.constant import TaskOutputVars
 from langeval.tasks import Result, TaskRunner
 
 
+def save_task_result(file: str, running_stats, eval_stats):
+    result = {
+        # process NaN value.
+        "running_stats": json.loads(running_stats.to_json(force_ascii=False)),
+        "eval_stats": json.loads(eval_stats.to_json(force_ascii=False)),
+    }
+    with open(file, "w") as f:
+        json.dump(result, f, indent=2, ensure_ascii=False)
+
 def show_task_result(app: Application, runner: TaskRunner, output_dir: str):
     result_file = os.path.join(output_dir, TaskOutputVars.TaskResult)
     # Display info
     app.display_header("Task Info")
     app.display_info(f"ID: {runner.uuid}")
-    app.display_info(f"Status: {runner.status!s}")
+    app.display_info(f"Status: {runner.status}")
     app.display_info(f"Progress: {runner.progress}")
     app.display_info(f"Output JSONL: {result_file}")
 

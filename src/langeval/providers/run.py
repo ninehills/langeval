@@ -72,7 +72,7 @@ def call_exec(conf: Provider, inputs: dict[str, Any], timeout: int) -> dict[str,
     kwargs = conf.settings.kwargs or {}
     env = kwargs.get("env") or {}
     cwd = kwargs.get("cwd") or None
-    exec_timeout = int(kwargs.get("timeout"))  # type: ignore
+    exec_timeout = int(kwargs.get("timeout", 300))  # type: ignore
     timeout = min(timeout, exec_timeout)
     input_data = json.dumps(inputs, ensure_ascii=False)
 

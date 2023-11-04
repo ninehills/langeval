@@ -7,7 +7,7 @@ LLM_QA_GRADE_PROMPT_TPL = """你是一名教师，接下来你需要根据【问
 
 1. 首先思考【问题】下，【参考答案】和【学生答案】的一致性。
 2. 根据一致性，给出对【学生答案】的评价理由。
-3. 根据评价理由，给出对【学生答案】的评分。（0代表错误，1代表部分正确，2代表完全正确）。
+3. 根据评价理由，给出对【学生答案】的评分。（0代表错误，0.5代表部分正确，1代表完全正确）。
 
 # 输入
 
@@ -17,30 +17,30 @@ LLM_QA_GRADE_PROMPT_TPL = """你是一名教师，接下来你需要根据【问
 
 # 输出
 
-输出为 JSON 格式的字符串，示例：
+输出为 Markdown JSON 格式的字符串，示例：
 
 ```json
 {
-    "reason": "<评价理由>",
+    "reasoning": "<评价理由>",
     "score": 0
 }
 ```
 
-注意分数只能为 0、1、2，0 代表错误，1 代表部分正确，2 代表完全正确。
+注意分数只能为 0、0.5、1，0 代表错误，0.5 代表部分正确，2 代表完全正确。
 
-输出（JSON 格式）：
+输出（Markdown JSON 格式）：
 """
 
 ExampleLLMGradeEvaluatorChinese = Evaluator(
     type=EvaluatorType.LLM_GRADE,
     input_keys=["query", "answer"],
     output_keys=["text"],
-    eval_keys=["reason", "score"],
+    eval_keys=["reasoning", "score"],
     settings=LLMGrade(
         prompt=LLM_QA_GRADE_PROMPT_TPL,
         llm=LLM(
             provider="openai",
-            model="gpt-3.5-turbo-instruct",
+            model="gpt-3.5-turbo",
             kwargs={
                 "temperature": 0.1,
             },

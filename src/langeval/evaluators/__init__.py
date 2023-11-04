@@ -1,2 +1,2 @@
-from .evaluator import Evaluator, EvaluatorType, EvaluatorTypeList  # noqa
+from .evaluator import Evaluator, EvaluatorType, EvaluatorSettings  # noqa
 from .exception import EvalRunError  # noqa

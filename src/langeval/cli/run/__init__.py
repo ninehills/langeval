@@ -7,7 +7,7 @@ import click
 
 from langeval.cli.application import Application
 from langeval.cli.constant import TaskOutputVars
-from langeval.cli.run.display import show_task_result
+from langeval.cli.run.display import save_task_result, show_task_result
 from langeval.tasks import EvalTask, TaskRunner, TaskRunnerStatus
 
 
@@ -110,4 +110,10 @@ def run(app: Application, task_file, output, interactive, web, sample):
     result_file_handler.close()
 
     # 6. Show result
+    running_stats, eval_stats = runner.statistic()
+    app.display_info(f"Save task result to {output}")
+    save_task_result(
+        os.path.join(output, TaskOutputVars.TaskStastics),
+        running_stats, eval_stats)
+
     show_task_result(app, runner, output)

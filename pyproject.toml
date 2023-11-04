@@ -28,7 +28,8 @@ dependencies = [
   "pydantic < 2",
   "jinja2",
   "pandas",
-  "PyYAML"
+  "PyYAML",
+  "scikit-learn"
 ]
 
 [project.urls]
@@ -141,7 +142,7 @@ ignore = [
   # Ignore: Boolean-typed positional argument in function definition
   "FBT001",
   # Ignore: String contains ambiguous `，` (FULLWIDTH COMMA). Did you mean `,` (COMMA)
-  "RUF001",
+  "RUF001", "RUF003",
 ]
 unfixable = [
   # Don't touch unused imports

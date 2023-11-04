@@ -85,7 +85,10 @@ class EvalTask(BaseModel):
                 path = input_dataset_name
             with open(path, "rb") as f:
                 obj["input_dataset_binary"] = f.read()
-        return cls(**obj)
+        logger.debug(f"EvalTask.from_yaml obj: {obj}")
+        task = cls(**obj)
+        logger.debug(f"EvalTask.from_yaml task: {task}")
+        return task
 
     def run(self, data_list: list[dict[str, Any]], stop_event: threading.Event, default_eval_llm: Optional[LLM] = None):
         """Run data list and return results"""
