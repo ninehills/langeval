@@ -69,6 +69,7 @@ hatch publish
 | High     | Better Custom Provider. |
 | Medium | Documents |
 | Medium | Test |
+| Medium | Pass the dataset |
 | Low | Support multi evaluator in one task. |
 | Low | Support run task from Python code. |
 | Low | Display task status in web. |
