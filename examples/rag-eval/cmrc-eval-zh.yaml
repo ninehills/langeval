@@ -8,7 +8,7 @@ provider:
       timeout: 50
 input_dataset_name: "cmrc-eval-zh.jsonl"
 run_config:
-  parallelism: 5  # 并发度
+  parallelism: 10  # 并发度
   timeout: 60 # 超时时间
   rounds: 1 # 评测轮数
 evaluator:

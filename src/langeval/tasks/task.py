@@ -39,9 +39,9 @@ class Result(BaseModel):
 
 
 class TaskRunConfig(BaseModel):
-    parallelism: int = Field(default=1, ge=1, le=10)
+    parallelism: int = Field(default=1, ge=1, le=30)
     timeout: int = Field(default=30, ge=1, le=600)
-    rounds: int = Field(default=1, ge=1, le=5)
+    rounds: int = Field(default=1, ge=1, le=10)
 
     def to_yaml(self) -> str:
         return yaml.safe_dump(self.dict(exclude_unset=True), encoding="utf-8", allow_unicode=True).decode("utf-8")

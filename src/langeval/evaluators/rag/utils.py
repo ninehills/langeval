@@ -9,7 +9,7 @@ def ab_max_inx(s_a, s_b):
     return i
 
 
-def lcs(s_a, s_b):
+def lcs(s_a, s_b, min_cs_len = 0):
     """计算两个字符串的所有不重复的公共字串，但是要求字串长度大于1
     适合中文，因为中文是字符单位的，不适合英文(英文需要按照空格分词，以词为单位）
     """
@@ -28,9 +28,9 @@ def lcs(s_a, s_b):
             res += lcs(s_a[a_end_inx:], s_b)
         else:
             res += lcs(s_a[1:], s_b)
-    return [i for i in res if len(i) > 1]
+    return [i for i in res if len(i) >= min_cs_len]
 
-def overlap_coefficient_contain(s1: str, s2: str) -> float:
+def overlap_coefficient_contain(s1: str, s2: str, min_cs_len = 1) -> float:
     """Compute overlap coefficient between two strings.
 
     Need find the longest common substring between the two strings.
@@ -40,7 +40,7 @@ def overlap_coefficient_contain(s1: str, s2: str) -> float:
     """
 
     # Find the longest common substring and its length
-    lcs_list = lcs(s1, s2)
+    lcs_list = lcs(s1, s2, min_cs_len)
 
     lcs_length = len("".join(lcs_list))
 
