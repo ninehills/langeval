@@ -11,7 +11,7 @@ from langeval.providers.output_parser import SimpleJsonOutputParser
 logger = logging.getLogger(__name__)
 
 
-def eval_python_code(evaluator: Evaluator, kwargs: dict[str, Any], timeout) -> dict[str, Any]:
+def eval_python_code(evaluator: Evaluator, kwargs_list: list[dict[str, Any]], timeout) -> list[dict[str, Any]]:
     """Do python code eval"""
     if evaluator.settings is None or type(evaluator.settings) != PythonCode:
         msg = "PYTHON_CODE not specified"
@@ -27,7 +27,7 @@ def eval_python_code(evaluator: Evaluator, kwargs: dict[str, Any], timeout) -> d
         f.flush()
         result = subprocess.run(
             ["python3", f.name],  # noqa: S603, S607
-            input=json.dumps(kwargs),
+            input=json.dumps(kwargs_list),
             stdout=subprocess.PIPE,
             timeout=timeout,
             check=True,

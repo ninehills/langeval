@@ -5,7 +5,7 @@ provider:
   settings:
     llm:
       provider: "openai"
-      model: "gpt-3.5-turbo-instruct"
+      model: "gpt-3.5-turbo"
       kwargs:
         temperature: 0.1
     prompt: |
@@ -35,19 +35,23 @@ provider:
       ## Output
       输出（Markdown JSON 格式）：
 input_dataset_name: "ceval-with-answer.jsonl"
-evaluator:
-  type: PYTHON_CODE
-  input_keys: ["answer"]
-  output_keys: ["choice"]
-  eval_keys: ["score"]
-  settings:
-    code: |
-      import json
-      import sys
-      kwargs = json.load(sys.stdin)
-      score = int(kwargs["choice"] == kwargs["answer"])
-      print(json.dumps({"score": score}))
+evaluators:
+  - name: exact_match
+    type: PYTHON_CODE
+    input_keys: ["answer"]
+    output_keys: ["choice"]
+    eval_keys: ["score"]
+    settings:
+      code: |
+        import json
+        import sys
+        kwargs_list = json.load(sys.stdin)
+        results = []
+        for kwargs in kwargs_list:
+            results["score"] = int(kwargs["answer"] == kwargs["text"])
+        print(json.dumps(results))
 run_config:
   parallelism: 5  # 并发度
   timeout: 30 # 超时时间
   rounds: 2 # 评测轮数
+  batch_size: 2 # 批量运行/评测

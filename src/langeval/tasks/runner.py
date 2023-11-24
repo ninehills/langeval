@@ -1,13 +1,16 @@
 import enum
 import json
 import logging
+import random
 import threading
 import time
 from datetime import datetime
-from typing import Tuple
+from typing import Optional, Tuple
 
 import pandas as pd
+from pydantic import BaseModel
 
+from langeval.models.llms import LLM
 from langeval.tasks.task import EvalTask, Result
 
 logger = logging.getLogger(__name__)
@@ -20,6 +23,15 @@ class TaskRunnerStatus(str, enum.Enum):
     CANCELLED = "CANCELLED"
     FAILED = "FAILED"
 
+class Progress(BaseModel):
+    total: int = 0
+    finished: int = 0
+    failed: int = 0
+
+class TaskProgress(BaseModel):
+    run: Progress
+    evals: dict[str, Progress]
+
 
 class TaskRunner:
     """
@@ -30,21 +42,25 @@ class TaskRunner:
         self,
         uuid: str,
         task: EvalTask,
-        sample: bool = False,  # noqa: FBT002
-        default_eval_llm=None,
-        status_callback=None,
-        log_callback=None,
-        progress_callback=None,
+        sample: int = 0,
+        sample_seed: int = 42,
+        default_eval_llm: Optional[LLM] = None,
+        status_callback = None,
+        log_callback = None,
+        progress_callback = None,
     ) -> None:
         self.task = task
         self.uuid = uuid
         self.sample = sample
+        self.sample_seed = sample_seed
         self.default_eval_llm = default_eval_llm
+
         # callback for status, log, progress updated.
         self.status_callback = status_callback
         self.log_callback = log_callback
         self.progress_callback = progress_callback
 
+        # status with lock
         self._status_lock = threading.Lock()
         self._status = TaskRunnerStatus.PENDING
 
@@ -52,8 +68,8 @@ class TaskRunner:
         self.finished_time = None
         self.cancel_event = threading.Event()
 
-        self.progress = "0/0/0"
-        self.results = []
+        self.progress: TaskProgress = TaskProgress(run=Progress(), evals={})
+        self.results: list[Result] = []
 
     @property
     def status(self) -> TaskRunnerStatus:
@@ -65,7 +81,7 @@ class TaskRunner:
             {
                 "uuid": self.uuid,
                 "status": self.status.value,
-                "progress": self.progress,
+                "progress": self.progress.dict(),
                 "finished_time": self.finished_time,
             }
         )
@@ -82,9 +98,8 @@ class TaskRunner:
         if self.log_callback:
             self.log_callback(self.uuid, log_entry)
 
-    def update_task_progress(self, progress: str, results: list[Result]):
+    def update_task_progress(self, progress: TaskProgress, results: list[Result]):
         self.progress = progress
-        self.results.extend(results)
         if self.progress_callback:
             self.progress_callback(self.uuid, progress, results)
 
@@ -134,48 +149,69 @@ class TaskRunner:
             )
             if self.sample and len(data_lists) > 0:
                 self.update_task_log("[runner._run] task sample to 1 data.")
-                data_lists = data_lists[:1]
+                data_lists = random.Random(self.sample_seed).sample(data_lists, self.sample)
             total = len(data_lists)
-            finished = 0
-            failed = 0
-            for result in self.task.run(
-                data_lists, stop_event=self.cancel_event, default_eval_llm=self.default_eval_llm
-            ):
-                if result.run_error or result.eval_error:
-                    failed += 1
-                else:
-                    finished += 1
-                progress = f"{finished}/{failed}/{total}"
-                self.update_task_log(f"[runner._run] task progress {progress}, result: {result}")
-                self.update_task_progress(progress, [result])
+            input_lists = [Result(inputs=d) for d in data_lists]
+            if self.task.provider is not None:
+                progress = TaskProgress(run=Progress(total=total), evals={})
+                for result in self.task.run_provider(input_lists, self.cancel_event):
+                    if result.run.error:
+                        progress.run.failed += 1
+                    else:
+                        progress.run.finished += 1
+                    self.update_task_log(f"[runner._run] task progress {progress}, result: {result}")
+                    self.update_task_progress(progress, [result])
+                    self.results.append(result)
 
-                # Check if task be cancelled
-                if self.cancel_event.is_set():
-                    logger.warn(f"[task-{self.uuid}][runner._run] task be cancelled")
-                    self.set_status(TaskRunnerStatus.CANCELLED)
-                    self.update_task_log("[runner._run] task cancelled")
+                    # Check if task be cancelled
+                    if self.cancel_event.is_set():
+                        logger.warn(f"[task-{self.uuid}][runner._run] task be cancelled")
+                        self.set_status(TaskRunnerStatus.CANCELLED)
+                        self.update_task_log("[runner._run] task cancelled")
+                        return
+                logger.info(f"[task-{self.uuid}][runner._run] end task run")
+                if progress.run.failed == progress.run.total:
+                    self.finished_time = time.time()
+                    self.set_status(TaskRunnerStatus.FAILED)
+                    self.update_task_log("[runner._run] task failed because all run failed")
                     return
-            logger.info("[task-{self.uuid}][runner._run] end task run")
-            self.finished_time = time.time()
-            if failed == total:
-                self.set_status(TaskRunnerStatus.FAILED)
-                self.update_task_log("[runner._run] task failed")
-            else:
-                self.set_status(TaskRunnerStatus.FINISHED)
-                self.update_task_log("[runner._run] task finished")
+
+            progress = self.progress
+            for evaluator in self.task.evaluators:
+                progress.evals[evaluator.name] = Progress(total=total)
+                new_results = []
+                for result in self.task.run_eval(self.results, self.cancel_event,
+                                                 default_eval_llm=self.default_eval_llm):
+                    if result.evals[evaluator.name].error:
+                        progress.evals[evaluator.name].failed += 1
+                    else:
+                        progress.evals[evaluator.name].finished += 1
+                    self.update_task_log(f"[runner._run] task eval {evaluator.name} progress {progress.evals[evaluator.name]}, result: {result}")
+                    self.update_task_progress(progress, [result])
+                    new_results.append(result)
+
+                    # Check if task be cancelled
+                    if self.cancel_event.is_set():
+                        logger.warn(f"[task-{self.uuid}][runner._run] task be cancelled")
+                        self.set_status(TaskRunnerStatus.CANCELLED)
+                        self.update_task_log("[runner._run] task cancelled")
+                        return
+                logger.info(f"[task-{self.uuid}][runner._run] end task eval")
+                self.results = new_results
+
         except Exception as e:
-            logger.error(f"[task-{self.uuid}][runner._run] failed to run task : {e}")
+            logger.error(f"[task-{self.uuid}][runner._run] failed to run task : {e}", exc_info=True)
             self.set_status(TaskRunnerStatus.FAILED)
             self.update_task_log(f"[runner._run] failed to run task : {e}")
 
     def statistic(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         df = pd.DataFrame([i.dict() for i in self.results])
         total_count = len(df)
-        run_success_rate = df["run_error"].apply(lambda x: x == "").mean()
-        run_success_count = df["run_error"].apply(lambda x: x == "").sum()
-        run_average_time = df["run_elapsed_secs"].mean()
-        eval_success_rate = df["eval_error"].apply(lambda x: x == "").mean()
-        eval_average_time = df["eval_elapsed_secs"].mean()
+        run_success_rate = df["run"].apply(lambda x: x["error"] == "").mean()
+        run_success_count = df["run"].apply(lambda x: x["error"] == "").sum()
+        run_average_time = df["run"].apply(lambda x: x["elapsed_secs"]).mean()
+        eval_success_rate = df["evals"].apply(lambda x: all(e["error"] == "" for e in x.values())).mean()
+        eval_average_time = df["evals"].apply(lambda x: sum(e["elapsed_secs"] for e in x.values())).mean()
         running_stats = pd.DataFrame(
             [
                 {
@@ -188,6 +224,12 @@ class TaskRunner:
                 }
             ]
         )
-        eval_outputs = df["eval_outputs"].apply(lambda x: pd.Series(x))
-        eval_stats = eval_outputs.describe().T if not eval_outputs.empty else pd.DataFrame()
+        eval_outputs = []
+        for _, row in df.iterrows():
+            e = {}
+            for k, v in row["evals"].items():
+                if v["error"] == "":
+                    for k2, v2 in v["outputs"].items():
+                        e[f"{k}.{k2}"] = v2
+        eval_stats = pd.DataFrame(eval_outputs).describe().T if eval_outputs else pd.DataFrame()
         return running_stats, eval_stats

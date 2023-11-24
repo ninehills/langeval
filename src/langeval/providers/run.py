@@ -66,7 +66,7 @@ def call_chat_completion(conf: Provider, inputs: dict[str, Any], timeout: int):
         raise ProviderRunError(f"call_completion invalid output_parser: {conf.output_parser}")
 
 
-def call_exec(conf: Provider, inputs: dict[str, Any], timeout: int) -> dict[str, str]:
+def batch_call_exec(conf: Provider, inputs_list: list[dict[str, Any]], timeout: int) -> list[dict[str, Any]]:
     if conf.settings is None or type(conf.settings) != ExecSettings:
         raise ProviderRunError(f"call_exec invalid provider config: {conf}")
     command = conf.settings.command
@@ -78,7 +78,7 @@ def call_exec(conf: Provider, inputs: dict[str, Any], timeout: int) -> dict[str,
     cwd = kwargs.get("cwd") or None
     exec_timeout = int(kwargs.get("timeout", 300))  # type: ignore
     timeout = min(timeout, exec_timeout)
-    input_data = json.dumps(inputs, ensure_ascii=False)
+    input_data = json.dumps(inputs_list, ensure_ascii=False)
 
     try:
         cp = subprocess.run(
@@ -96,12 +96,18 @@ def call_exec(conf: Provider, inputs: dict[str, Any], timeout: int) -> dict[str,
     except Exception as e:
         raise ProviderRunError(f"call_exec failed: {e}") from e
 
+    try:
+        # list for string
+        texts = json.loads(cp.stdout)
+    except json.JSONDecodeError as e:
+        raise ProviderRunError(f"call_exec output parser failed: {e}") from e
+
     if conf.output_parser == "text":
-        return {"text": cp.stdout}
+        return [{"text": text} for text in texts]
     elif conf.output_parser == "json":
         try:
-            return json.loads(cp.stdout)
-        except json.JSONDecodeError as e:
+            return [SimpleJsonOutputParser().parse(text) for text in texts]
+        except OutputParserError as e:
             raise ProviderRunError(f"call_exec output parser failed: {e}") from e
     else:
         raise ProviderRunError(f"call_exec invalid output_parser: {conf.output_parser}")

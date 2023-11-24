@@ -62,13 +62,15 @@ answer = {
 
 final_chain = _inputs | retrieved_documents | answer
 
-inputs = {
-    "question": json.loads(sys.stdin.read())["question"]
-}
-result = final_chain.invoke(inputs)
-result_formatted = {
-    "answer": result["answer"].content,
-    "contexts": [i[0].page_content for i in result["docs_with_score"]],
-    "contexts_scores": [i[1] for i in result["docs_with_score"]],
-}
-print(json.dumps(result_formatted, ensure_ascii=False, indent=2))
+final_results = []
+for i in json.loads(sys.stdin.read()):
+    inputs = {
+        "question": i["question"]
+    }
+    result = final_chain.invoke(inputs)
+    final_results.append({
+        "answer": result["answer"].content,
+        "contexts": [i[0].page_content for i in result["docs_with_score"]],
+        "contexts_scores": [i[1] for i in result["docs_with_score"]],
+    })
+print(json.dumps(final_results, ensure_ascii=False, indent=2))

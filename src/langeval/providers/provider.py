@@ -66,17 +66,18 @@ class Provider(BaseModel):
         except Exception as e:
             raise ValueError(f"Invalid yaml: {e}") from e
 
-    def call(self, inputs: dict[str, Any], timeout: int):
-        from langeval.providers.run import call_chat_completion, call_completion, call_exec
+    def batch_call(self, inputs_list: list[dict[str, Any]], timeout: int):
+        from langeval.providers.run import batch_call_exec, call_chat_completion, call_completion
 
         for key in self.input_variables:
-            if key not in inputs:
-                raise ProviderRunError(f"Missing input variable: {key}")
+            for inputs in inputs_list:
+                if key not in inputs:
+                    raise ProviderRunError(f"Missing input variable: {key}")
         if self.type == "completion":
-            return call_completion(self, inputs, timeout)
+            return [call_completion(self, inputs, timeout) for inputs in inputs_list]
         elif self.type == "chat_completion":
-            return call_chat_completion(self, inputs, timeout)
+            return [call_chat_completion(self, inputs, timeout) for inputs in inputs_list]
         elif self.type == "execute":
-            return call_exec(self, inputs, timeout)
+            return batch_call_exec(self, inputs_list, timeout)
         else:
             raise ProviderRunError(f"Invalid type: {self.type}")

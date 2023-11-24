@@ -60,17 +60,3 @@ hatch publish
 ## License
 
 `LangEval` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
-
-## TODO
-
-| Priority | Description |
-| -------- | ----------- |
-| High     |    Re-run failed task.         |
-| High     | Better Custom Provider. |
-| Medium | Documents |
-| Medium | Test |
-| Medium | Pass the dataset |
-| Low | Support multi evaluator in one task. |
-| Low | Support run task from Python code. |
-| Low | Display task status in web. |
-| Low     |    Support OpenAI function calling. |

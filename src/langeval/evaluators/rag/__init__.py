@@ -95,9 +95,9 @@ def retrieval_recall(rag: Rag, kwargs: dict[str, Any], timeout, default_llm):   
     ndgc_10 = ndcg_score([true_relevance], [scores], k=10) # type: ignore
 
     return {
-        "retrieval_recall": ndgc_10,
-        "retrieval_recall_hit_rate": hit_rate,
+        "retrieval_recall": hit_rate,
         "retrieval_recall_mrr": mrr,
+        "retrieval_recall_ndgc_10": ndgc_10,
     }
 
 

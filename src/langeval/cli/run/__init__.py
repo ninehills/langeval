@@ -24,9 +24,10 @@ from langeval.tasks import EvalTask, TaskRunner, TaskRunnerStatus
     "--interactive", "-i", "interactive", is_flag=True, help="Interactively choose details about the evaluation"
 )
 @click.option("--web", "web", is_flag=True, help="Display the web UI for the evaluation.")
-@click.option("--sample", "-s", "sample", is_flag=True, help="Do only once eval for test.")
+@click.option("--sample", "-s", "sample", type=int, help="Sample size for the evaluation.")
+@click.option("--sample_seed", "-ss", "sample_seed", type=int, help="Sample seed for the evaluation. Default: 42", default=42)
 @click.pass_obj
-def run(app: Application, task_file, output, interactive, web, sample):
+def run(app: Application, task_file, output, interactive, web, sample, sample_seed):
     """Run evaluation task.
 
     TASK_FILE: The evaluation task yaml file.
@@ -65,14 +66,14 @@ def run(app: Application, task_file, output, interactive, web, sample):
         log_file_handler.flush()
 
     status_file = os.path.join(output, TaskOutputVars.TaskStatus)
-    result_file = os.path.join(output, TaskOutputVars.TaskResult)
-    result_file_handler = open(result_file, "w")
+    output_file = os.path.join(output, TaskOutputVars.TaskOutput)
+    output_file_handler = open(output_file, "w")
 
     def progress_callback(_, progress, results):
         app.display_info(f"Progress: {progress}")
         jsonl = "".join([r.to_jsonl() for r in results])
-        result_file_handler.write(jsonl)
-        result_file_handler.flush()
+        output_file_handler.write(jsonl)
+        output_file_handler.flush()
 
         with open(status_file, "w") as f:
             f.write(runner.status_json())
@@ -86,6 +87,7 @@ def run(app: Application, task_file, output, interactive, web, sample):
         task_id,
         task,
         sample=sample,
+        sample_seed=sample_seed,
         status_callback=status_callback,
         log_callback=log_callback,
         progress_callback=progress_callback,
@@ -107,7 +109,11 @@ def run(app: Application, task_file, output, interactive, web, sample):
         app.display_error(f">>> Task {task_id} finish: {runner.status}.")
 
     log_file_handler.close()
-    result_file_handler.close()
+    output_file_handler.close()
+
+    with open(os.path.join(output, TaskOutputVars.TaskResult), "w") as f:
+        for result in runner.results:
+            f.write(result.to_jsonl())
 
     # 6. Show result
     running_stats, eval_stats = runner.statistic()

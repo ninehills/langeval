@@ -28,7 +28,7 @@ def show(app: Application, task_dir, web):
         # {"uuid": "2311021530-5c69", "status": "FINISHED", "progress": "1/0/1", "finished_time": 1698910215.125846}
         status = json.loads(f.read())
 
-    with open(os.path.join(task_dir, TaskOutputVars.TaskResult)) as f:
+    with open(os.path.join(task_dir, TaskOutputVars.TaskOutput)) as f:
         results = [Result.from_json(line) for line in f.readlines()]
 
     runner = TaskRunner(status["uuid"], task)

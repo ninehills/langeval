@@ -32,6 +32,7 @@ LLM_QA_GRADE_PROMPT_TPL = """你是一名教师，接下来你需要根据【问
 """
 
 ExampleLLMGradeEvaluatorChinese = Evaluator(
+    name="llm_qa_grade",
     type=EvaluatorType.LLM_GRADE,
     input_keys=["query", "answer"],
     output_keys=["text"],
@@ -49,6 +50,7 @@ ExampleLLMGradeEvaluatorChinese = Evaluator(
 )
 
 ExampleEmbeddingCosSimEvaluator = Evaluator(
+    name="cos_sim",
     type=EvaluatorType.EMBEDDING_COS_SIM,
     input_keys=["answer"],
     output_keys=["text"],
@@ -64,6 +66,7 @@ ExampleEmbeddingCosSimEvaluator = Evaluator(
 )
 
 ExamplePythonCodeEvaluator = Evaluator(
+    name="exact_match",
     type=EvaluatorType.PYTHON_CODE,
     input_keys=["answer"],
     output_keys=["text"],
@@ -71,9 +74,11 @@ ExamplePythonCodeEvaluator = Evaluator(
     settings=PythonCode(
         code="""import json
 import sys
-kwargs = json.load(sys.stdin)
-score = int(kwargs["answer"] == kwargs["text"])
-print(json.dumps({"score": score}))
+kwargs_list = json.load(sys.stdin)
+results = []
+for kwargs in kwargs_list:
+    results.append(dict(score=(int(kwargs["answer"] == kwargs["text"]))))
+print(json.dumps(results))
 """
     ),
 )

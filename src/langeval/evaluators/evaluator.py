@@ -55,7 +55,8 @@ EvaluatorSettings = {
 
 class Evaluator(BaseModel):
     """Evaluator"""
-
+    # Name
+    name: str
     # Provider input keys
     input_keys: list[str] = []
     # Provider output keys
@@ -87,37 +88,47 @@ class Evaluator(BaseModel):
             raise ValueError(f"Invalid type: {v}")
         return v
 
-    def call(self, inputs: dict[str, Any], outputs: dict[str, Any], timeout=10, default_llm=None) -> dict[str, Any]:
-        """Do eval"""
+    def batch_call(self, batch_inputs: list[dict[str, Any]], outputs: list[dict[str, Any]], timeout=10, default_llm=None) -> list[dict[str, Any]]:
+        """Do batch eval"""
         from langeval.evaluators.rag import eval_rag
         from langeval.evaluators.run import eval_embedding_cos_sim, eval_llm_grade, eval_python_code
-        kwargs = {}
-        for k in self.input_keys:
-            if k not in inputs:
-                msg = f"eval input missing key: {k}"
-                raise EvalRunError(msg)
-            kwargs[k] = inputs[k]
-
-        for k in self.output_keys:
-            if k in outputs:
-                kwargs[k] = outputs[k]
-            elif k in inputs:
+        kwargs_list = []
+        for i, inputs in enumerate(batch_inputs):
+            kwargs = {}
+            for k in self.input_keys:
+                if k not in inputs:
+                    msg = f"eval input missing key: {k}"
+                    raise EvalRunError(msg)
                 kwargs[k] = inputs[k]
-            else:
-                msg = f"eval input missing key: {k}"
-                raise EvalRunError(msg)
 
+            for k in self.output_keys:
+                if k in outputs[i]:
+                    kwargs[k] = outputs[i][k]
+                elif k in inputs:
+                    kwargs[k] = inputs[k]
+                else:
+                    msg = f"eval input missing key: {k}"
+                    raise EvalRunError(msg)
+            kwargs_list.append(kwargs)
+
+        results = []
         try:
             if self.type == EvaluatorType.LLM_GRADE:
-                return eval_llm_grade(self, kwargs, timeout, default_llm)
+                for kwargs in kwargs_list:
+                    results.append(eval_llm_grade(self, kwargs, timeout, default_llm))
+                return results
             elif self.type == EvaluatorType.EMBEDDING_COS_SIM:
-                return eval_embedding_cos_sim(self, kwargs, timeout)
+                for kwargs in kwargs_list:
+                    results.append(eval_embedding_cos_sim(self, kwargs, timeout))
+                return results
             elif self.type == EvaluatorType.PYTHON_CODE:
-                return eval_python_code(self, kwargs, timeout)
+                return eval_python_code(self, kwargs_list, timeout)
             elif self.type == EvaluatorType.RAG:
                 if self.settings is None or type(self.settings) != Rag:
                     raise EvalRunError(f"RAG settings is not specified: {self.settings}")
-                return eval_rag(self.settings, kwargs, timeout, default_llm)
+                for kwargs in kwargs_list:
+                    results.append(eval_rag(self.settings, kwargs, timeout, default_llm))
+                return results
         except Exception as e:
             logger.exception(f"eval failed: {e}")
             logger.debug(f"evaluator {self} eval failed: {e}", exc_info=True)
