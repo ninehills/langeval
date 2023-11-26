@@ -224,13 +224,23 @@ class TaskRunner:
                 }
             ]
         )
-        eval_outputs = []
-        for _, row in df.iterrows():
-            e = {}
-            for name, v in row["evals"].items():
-                if v["error"] == "":
-                    for k2, v2 in v["outputs"].items():
-                        e[f"{name}.{k2}"] = v2
-            eval_outputs.append(e)
-        eval_stats = pd.DataFrame(eval_outputs).describe().T if eval_outputs else pd.DataFrame()
+        # "evals": {"exact_match": {"error": "", "outputs": {"exact_match": 1.0}, "elapsed_secs": 5.728999894927256e-06}}
+        def flatten_outputs(data_row):
+            """
+            从嵌套字典中提取并展平 'outputs' 键下的内容。
+            :param data_row: 包含嵌套字典的数据行。
+            :return: 展平后的 'outputs' 字典。
+            """
+            flattened = {}
+            for key, value in data_row.items():
+                if 'outputs' in value:
+                    for output_key, output_value in value['outputs'].items():
+                        flattened_key = f"{key}.outputs.{output_key}"
+                        flattened[flattened_key] = output_value
+            return flattened
+        flattened_evals = df['evals'].apply(flatten_outputs)
+        flattened_df = pd.DataFrame(flattened_evals.tolist())
+        flattened_df.fillna(0.0, inplace=True)
+
+        eval_stats = pd.DataFrame(flattened_df).describe().T
         return running_stats, eval_stats

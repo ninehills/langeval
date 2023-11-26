@@ -8,7 +8,6 @@ import jinja2
 
 from langeval.models import ModelRunError
 from langeval.providers.exception import ProviderRunError
-from langeval.providers.output_parser import OutputParserError, SimpleJsonOutputParser
 from langeval.providers.provider import ExecSettings, LLMSettings, Provider
 
 logger = logging.getLogger(__name__)
@@ -27,26 +26,16 @@ def call_completion(conf: Provider, inputs: dict[str, Any], timeout: int) -> dic
     except Exception as e:
         raise ProviderRunError(f"call_completion failed: {e}") from e
 
-    if conf.output_parser == "text":
-        return {"text": text}
-    elif conf.output_parser == "json":
-        try:
-            ret = SimpleJsonOutputParser().parse(text)
-            if ret is None:
-                raise ProviderRunError(f"call_completion output parser failed: {ret}, src: {text}")
-            ret["_text"] = text
-            return ret
-        except OutputParserError as e:
-            raise ProviderRunError(f"call_completion output parser failed: {e}, src: {text}") from e
-    else:
-        raise ProviderRunError(f"call_completion invalid output_parser: {conf.output_parser}")
+    return conf.output_parser.parse(text)
 
 
 def call_chat_completion(conf: Provider, inputs: dict[str, Any], timeout: int):
     if conf.settings is None or type(conf.settings) != LLMSettings:
         raise ProviderRunError(f"call_completion invalid provider config: {conf}")
-    messages = jinja2.Template(conf.settings.prompt).render(**inputs)
-    messages = json.loads(messages)
+    messages = json.loads(conf.settings.prompt)
+    for message in messages:
+        message["content"] = jinja2.Template(message["content"]).render(**inputs)
+
 
     try:
         text = conf.settings.llm.chat_completion(messages, timeout=timeout)
@@ -55,15 +44,7 @@ def call_chat_completion(conf: Provider, inputs: dict[str, Any], timeout: int):
     except Exception as e:
         raise ProviderRunError(f"call_chat_completion failed: {e}") from e
 
-    if conf.output_parser == "text":
-        return {"text": text}
-    elif conf.output_parser == "json":
-        try:
-            return SimpleJsonOutputParser().parse(text)
-        except OutputParserError as e:
-            raise ProviderRunError(f"call_completion output parser failed: {e}") from e
-    else:
-        raise ProviderRunError(f"call_completion invalid output_parser: {conf.output_parser}")
+    return conf.output_parser.parse(text)
 
 
 def batch_call_exec(conf: Provider, inputs_list: list[dict[str, Any]], timeout: int) -> list[dict[str, Any]]:
@@ -102,12 +83,4 @@ def batch_call_exec(conf: Provider, inputs_list: list[dict[str, Any]], timeout: 
     except json.JSONDecodeError as e:
         raise ProviderRunError(f"call_exec output parser failed: {e}") from e
 
-    if conf.output_parser == "text":
-        return [{"text": text} for text in texts]
-    elif conf.output_parser == "json":
-        try:
-            return [SimpleJsonOutputParser().parse(text) for text in texts]
-        except OutputParserError as e:
-            raise ProviderRunError(f"call_exec output parser failed: {e}") from e
-    else:
-        raise ProviderRunError(f"call_exec invalid output_parser: {conf.output_parser}")
+    return [conf.output_parser.parse(text) for text in texts]

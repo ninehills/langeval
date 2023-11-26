@@ -1,12 +1,15 @@
+from calendar import c
+from distutils.core import extension_keywords
 import enum
 import logging
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, List
 
 import yaml
 from pydantic import BaseModel, Field, validator
 
 from langeval.models import LLM
 from langeval.providers.exception import ProviderRunError
+from langeval.providers.output_parser import OutputParserError, SimpleJsonOutputParser
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,39 @@ class LLMSettings(BaseModel):
     prompt: str
 
 
+class OutputParser(BaseModel):
+    """Output Parser"""
+
+    name: str = Field(choices=["text", "json"], default="text")
+    # json parser:
+    #    output_keys defines the keys to be extracted from the json output
+    #    if not defined, all keys will be extracted
+    kwargs: dict = {}
+
+
+    def parse(self, text: str) -> dict[str, Any]:
+        if self.name == "text":
+            return {"text": text}
+        elif self.name == "json":
+            try:
+                resp = SimpleJsonOutputParser().parse(text)
+                if not resp:
+                    raise ProviderRunError(f"output parser failed {text} -> {resp}")
+            except OutputParserError as e:
+                raise ProviderRunError(f"output parser failed {text}: {e}") from e
+            keys = self.kwargs.get("output_keys", None)
+            final_resp = {}
+            if keys:
+                for key in keys:
+                    if key not in resp:
+                        raise ProviderRunError(f"output parser failed lack keys: {text} -> {resp}")
+                    final_resp[key] = resp[key]
+            final_resp["_text"] = text
+            return final_resp
+        else:
+            raise ProviderRunError(f"Invalid output parser: {self.name}")
+
+
 class Provider(BaseModel):
     """Provider Config"""
 
@@ -40,7 +76,7 @@ class Provider(BaseModel):
     type: ProviderType  # noqa: A003
     input_variables: list[str]
     settings: Union[ExecSettings, LLMSettings]
-    output_parser: str
+    output_parser: OutputParser
 
     class Config:
         validate_assignment = True
@@ -49,12 +85,6 @@ class Provider(BaseModel):
     def type_must_be_valid(cls, v):  # noqa: N805
         if v not in [ProviderType.Completion, ProviderType.ChatCompletion, ProviderType.Execute]:
             raise ValueError("type must be one of completion, chat_completion, execute")
-        return v
-
-    @validator("output_parser")
-    def output_parser_must_be_valid(cls, v):  # noqa: N805
-        if v not in ["json", "text"]:
-            raise ValueError("output_parser must be one of json, text")
         return v
 
     @classmethod

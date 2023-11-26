@@ -19,7 +19,7 @@ def save_task_result(file: str, running_stats, eval_stats):
         json.dump(result, f, indent=2, ensure_ascii=False)
 
 def show_task_result(app: Application, runner: TaskRunner, output_dir: str):
-    result_file = os.path.join(output_dir, TaskOutputVars.TaskOutput)
+    result_file = os.path.join(output_dir, TaskOutputVars.TaskResult)
     # Display info
     app.display_header("Task Info")
     app.display_info(f"ID: {runner.uuid}")
