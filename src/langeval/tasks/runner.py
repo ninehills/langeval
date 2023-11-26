@@ -227,9 +227,10 @@ class TaskRunner:
         eval_outputs = []
         for _, row in df.iterrows():
             e = {}
-            for k, v in row["evals"].items():
+            for name, v in row["evals"].items():
                 if v["error"] == "":
                     for k2, v2 in v["outputs"].items():
-                        e[f"{k}.{k2}"] = v2
+                        e[f"{name}.{k2}"] = v2
+            eval_outputs.append(e)
         eval_stats = pd.DataFrame(eval_outputs).describe().T if eval_outputs else pd.DataFrame()
         return running_stats, eval_stats
