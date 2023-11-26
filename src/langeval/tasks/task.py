@@ -12,7 +12,7 @@ import pandas as pd
 import yaml
 from pydantic import BaseModel, Field, validator
 
-from langeval.evaluators import Evaluator
+from langeval.evaluators import Evaluator, EvaluatorSettings
 from langeval.models import LLM
 from langeval.providers import Provider
 
@@ -165,7 +165,7 @@ class EvalTask(BaseModel):
         try:
             eval_outputs = evaluator.batch_call(
                 batch_inputs=[data.inputs for data in batch_data],
-                outputs=[data.run.outputs for data in batch_data],
+                batch_outputs=[data.run.outputs for data in batch_data],
                 timeout=self.run_config.timeout,
                 default_llm=default_eval_llm,
             )

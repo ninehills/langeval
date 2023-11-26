@@ -39,12 +39,11 @@ def eval_embedding_cos_sim(evaluator: Evaluator, kwargs: dict[str, Any], timeout
     """Embedding Cosine Similarity"""
     if evaluator.settings is None or type(evaluator.settings) != EmbeddingCosSim:
         raise EvalRunError("EMBEDDING_COS_SIM not specified")
-    if len(evaluator.input_keys) == 0 or len(evaluator.output_keys) == 0:
+    if len(evaluator.settings.pairs_keys) != 2: # noqa: PLR2004
         raise EvalRunError("EMBEDDING_COS_SIM input/output keys not specified")
 
     model = evaluator.settings.embedding
-    key1 = evaluator.input_keys[0]
-    key2 = evaluator.output_keys[0]
+    key1, key2 = evaluator.settings.pairs_keys
     embeddings = model.embedding([kwargs[key1], kwargs[key2]], timeout=timeout)
     cos_sim = Embedding.cosine_similarity(embeddings[0], embeddings[1])
     is_similar = cos_sim >= evaluator.settings.cos_sim_threshold
@@ -67,7 +66,7 @@ def eval_llm_grade(evaluator: Evaluator, kwargs: dict[str, Any], timeout, defaul
     text = llm.completion(prompt, timeout=timeout)
     eval_result = {}
     result = SimpleJsonOutputParser().parse(text)
-    for k in evaluator.eval_keys:
+    for k in evaluator.settings.eval_keys:
         if k not in result:
             raise EvalRunError(f"eval completion result missing key: {k}")
         eval_result[k] = result[k]

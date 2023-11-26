@@ -30,7 +30,10 @@ dependencies = [
   "jinja2",
   "pandas",
   "PyYAML",
-  "scikit-learn"
+  "scikit-learn",
+  "rouge_chinese",
+  "jieba",
+  "nltk"
 ]
 
 [project.urls]
@@ -144,6 +147,8 @@ ignore = [
   "FBT001",
   # Ignore: String contains ambiguous `，` (FULLWIDTH COMMA). Did you mean `,` (COMMA)
   "RUF001", "RUF003",
+  # https://docs.astral.sh/ruff/rules/boolean-default-value-positional-argument/
+  "FBT002",
 ]
 unfixable = [
   # Don't touch unused imports

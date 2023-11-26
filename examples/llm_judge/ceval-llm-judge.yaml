@@ -38,10 +38,8 @@ input_dataset_name: "ceval-llm-judge.jsonl"
 evaluators:
   - name: "gpt-4-teacher"
     type: LLM_GRADE
-    input_keys: ["question", "A", "B", "C", "D"]
-    output_keys: ["choice"]
-    eval_keys: ["reasoning", "right_answer", "score"]
     settings:
+      eval_keys: ["reasoning", "right_answer", "score"]
       llm:
         provider: "openai"
         model: "gpt-4"

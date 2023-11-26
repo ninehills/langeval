@@ -37,19 +37,11 @@ provider:
 input_dataset_name: "ceval-with-answer.jsonl"
 evaluators:
   - name: exact_match
-    type: PYTHON_CODE
-    input_keys: ["answer"]
-    output_keys: ["choice"]
-    eval_keys: ["score"]
+    type: NLP
     settings:
-      code: |
-        import json
-        import sys
-        kwargs_list = json.load(sys.stdin)
-        results = []
-        for kwargs in kwargs_list:
-            results["score"] = int(kwargs["answer"] == kwargs["text"])
-        print(json.dumps(results))
+      prediction_key: "choice"
+      reference_key: "answer"
+      nlp_metrics: ["exact_match"]
 run_config:
   parallelism: 5  # 并发度
   timeout: 30 # 超时时间

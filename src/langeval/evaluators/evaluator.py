@@ -1,4 +1,5 @@
 """Evaluator Types"""
+import copy
 import enum
 import logging
 from typing import Any, Optional, Union
@@ -7,6 +8,7 @@ import yaml
 from pydantic import BaseModel, validator
 
 from langeval.evaluators.exception import EvalRunError
+from langeval.evaluators.nlp import NLP
 from langeval.evaluators.rag import Rag
 from langeval.models import LLM, Embedding
 
@@ -29,14 +31,18 @@ class EvaluatorType(str, enum.Enum):
     EMBEDDING_COS_SIM = "EMBEDDING_COS_SIM"
     PYTHON_CODE = "PYTHON_CODE"
     RAG = "RAG"
+    # Some NLP metrics
+    NLP = "NLP"
 
 
 class LLMGrade(BaseModel):
     prompt: str
+    eval_keys: list[str]
     llm: Optional[LLM] = None
 
 
 class EmbeddingCosSim(BaseModel):
+    pairs_keys: tuple[str, str]
     embedding: Embedding
     cos_sim_threshold: float
 
@@ -50,6 +56,7 @@ EvaluatorSettings = {
     EvaluatorType.EMBEDDING_COS_SIM: EmbeddingCosSim,
     EvaluatorType.PYTHON_CODE: PythonCode,
     EvaluatorType.RAG: Rag,
+    EvaluatorType.NLP: NLP,
 }
 
 
@@ -57,30 +64,13 @@ class Evaluator(BaseModel):
     """Evaluator"""
     # Name
     name: str
-    # Provider input keys
-    input_keys: list[str] = []
-    # Provider output keys
-    output_keys: list[str] = []
-    # Eval output keys
-    eval_keys: list[str] = []
     # Type
     type: EvaluatorType  # noqa: A003
     # Detail config
-    settings: Optional[Union[Rag, LLMGrade, EmbeddingCosSim, PythonCode]] = None
-
-    class Config:
-        validate_assignment = True
+    settings: Optional[Union[Rag, LLMGrade, EmbeddingCosSim, PythonCode, NLP]] = None
 
     def to_yaml(self) -> str:
         return yaml.dump(self.dict(exclude_unset=True), encoding="utf-8", allow_unicode=True).decode("utf-8")
-
-    @classmethod
-    def from_yaml(cls, yaml_str: str) -> Optional["Evaluator"]:
-        if yaml_str == "":
-            return None
-
-        obj = yaml.load(yaml_str, Loader=yaml.FullLoader)  # noqa: S506
-        return cls(**obj)
 
     @validator("type")
     def type_must_be_valid(cls, v):  # noqa: N805
@@ -88,27 +78,14 @@ class Evaluator(BaseModel):
             raise ValueError(f"Invalid type: {v}")
         return v
 
-    def batch_call(self, batch_inputs: list[dict[str, Any]], outputs: list[dict[str, Any]], timeout=10, default_llm=None) -> list[dict[str, Any]]:
+    def batch_call(self, batch_inputs: list[dict[str, Any]], batch_outputs: list[dict[str, Any]], timeout=10, default_llm=None) -> list[dict[str, Any]]:
         """Do batch eval"""
         from langeval.evaluators.rag import eval_rag
         from langeval.evaluators.run import eval_embedding_cos_sim, eval_llm_grade, eval_python_code
         kwargs_list = []
         for i, inputs in enumerate(batch_inputs):
-            kwargs = {}
-            for k in self.input_keys:
-                if k not in inputs:
-                    msg = f"eval input missing key: {k}"
-                    raise EvalRunError(msg)
-                kwargs[k] = inputs[k]
-
-            for k in self.output_keys:
-                if k in outputs[i]:
-                    kwargs[k] = outputs[i][k]
-                elif k in inputs:
-                    kwargs[k] = inputs[k]
-                else:
-                    msg = f"eval input missing key: {k}"
-                    raise EvalRunError(msg)
+            kwargs = copy.copy(inputs)
+            kwargs.update(batch_outputs[i])
             kwargs_list.append(kwargs)
 
         results = []
@@ -128,6 +105,12 @@ class Evaluator(BaseModel):
                     raise EvalRunError(f"RAG settings is not specified: {self.settings}")
                 for kwargs in kwargs_list:
                     results.append(eval_rag(self.settings, kwargs, timeout, default_llm))
+                return results
+            elif self.type == EvaluatorType.NLP:
+                if self.settings is None or type(self.settings) != NLP:
+                    raise EvalRunError(f"NLP settings is not specified: {self.settings}")
+                for kwargs in kwargs_list:
+                    results.append(self.settings.call(kwargs))
                 return results
         except Exception as e:
             logger.exception(f"eval failed: {e}")

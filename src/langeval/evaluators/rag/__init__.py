@@ -48,17 +48,13 @@ DEFAULT_ANSWER_CORRECTNESS_PROMPT = """
 class RagMetric(str, enum.Enum):
     # Compare contexts and reference_context
     RetrievalRecall = "retrieval_recall"
-    # Compare answer and reference_answer with similarity
-    AnswerSimilarity = "answer_similarity"
     # Compare answer and reference_answer with LLM-JUDGE correctness
     AnswerCorrectness = "answer_correctness"
 
 
 class Rag(BaseModel):
-    metrics: list[RagMetric]
-    llm: Optional[LLM] = None
-    embedding: Optional[Embedding] = None
-    answer_similarity_threshold: Optional[float] = None
+    rag_metrics: list[RagMetric]
+    rag_llm: Optional[LLM] = None
     answer_correctness_prompt: Optional[str] = None
 
 
@@ -100,27 +96,9 @@ def retrieval_recall(rag: Rag, kwargs: dict[str, Any], timeout, default_llm):   
         "retrieval_recall_ndgc_10": ndgc_10,
     }
 
-
-def answer_similarity(rag: Rag, kwargs: dict[str, Any], timeout, default_llm):
-    if rag.embedding is None:
-        raise EvalRunError("embedding is None, can not eval answer_similarity")
-
-    embeddings = rag.embedding.embedding(
-        [kwargs["reference_answer"], kwargs["answer"]], timeout=timeout)
-    cos_sim = Embedding.cosine_similarity(embeddings[0], embeddings[1])
-    threshold = DEFAULT_ANSWER_SIMILARITY_THRESHOLD \
-        if rag.answer_similarity_threshold is None else rag.answer_similarity_threshold
-    return {
-        # Cosine Similarity 的绝对值没有意义，但是可以进行对比，越高越好。
-        "answer_similarity": cos_sim,
-        # 根据 threshold 二值化为0或1
-        "answer_similarity_bin": int(cos_sim >= threshold),
-    }
-
-
 def answer_correctness(rag: Rag, kwargs: dict[str, Any], timeout, default_llm):
-    if rag.llm:
-        llm = rag.llm
+    if rag.rag_llm:
+        llm = rag.rag_llm
     else:
         llm = default_llm
     if llm is None:
@@ -139,14 +117,13 @@ def answer_correctness(rag: Rag, kwargs: dict[str, Any], timeout, default_llm):
 
 metrics_eval_funcs = {
     RagMetric.RetrievalRecall: retrieval_recall,
-    RagMetric.AnswerSimilarity: answer_similarity,
     RagMetric.AnswerCorrectness: answer_correctness,
 }
 
 def eval_rag(rag: Rag, kwargs: dict[str, Any], timeout, default_llm) -> dict[str, Any]:
     """Rag eval"""
     eval_result = {}
-    for metric in rag.metrics:
+    for metric in rag.rag_metrics:
         if metric not in metrics_eval_funcs:
             raise EvalRunError(f"eval rag metric not supported: {metric}")
         eval_func = metrics_eval_funcs[metric]
