@@ -39,10 +39,13 @@ class LLMSettings(BaseModel):
 class OutputParser(BaseModel):
     """Output Parser"""
 
-    name: str = Field(choices=["text", "json"], default="text")
+    name: str = Field(choices=["text", "json", "match"], default="text")
     # json parser:
     #    output_keys defines the keys to be extracted from the json output
     #    if not defined, all keys will be extracted
+    # match parser:
+    #    match_key: the key to be matched
+    #    match_re: the regex to be matched
     kwargs: dict = {}
 
 
@@ -65,6 +68,16 @@ class OutputParser(BaseModel):
                     final_resp[key] = resp[key]
             final_resp["_text"] = text
             return final_resp
+        elif self.name == "match":
+            match_key = self.kwargs.get("match_key", None)
+            match_re = self.kwargs.get("match_re", None)
+            if not match_key or not match_re:
+                raise ProviderRunError(f"Invalid output parser: {self.name} kwargs: {self.kwargs}")
+            import re
+            match = re.search(match_re.strip(), text)
+            if not match:
+                raise ProviderRunError(f"output parser failed: {text} match '{match_re.strip()}' failed")
+            return {match_key: match.group(1), "_text": text}
         else:
             raise ProviderRunError(f"Invalid output parser: {self.name}")
 
