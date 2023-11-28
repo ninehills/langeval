@@ -10,7 +10,10 @@ from typing import Any, List, Optional
 
 import pandas as pd
 import yaml
-from pydantic import BaseModel, Field, validator
+try:
+    from pydantic.v1 import BaseModel, Field, validator
+except ImportError:
+    from pydantic import BaseModel, Field, validator
 
 from langeval.evaluators import Evaluator, EvaluatorSettings
 from langeval.models import LLM

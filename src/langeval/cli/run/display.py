@@ -2,7 +2,10 @@ import json
 import os
 
 import pandas as pd
-from pydantic import BaseModel
+try:
+    from pydantic.v1 import BaseModel
+except ImportError:
+    from pydantic import BaseModel
 
 from langeval.cli.application import Application
 from langeval.cli.constant import TaskOutputVars

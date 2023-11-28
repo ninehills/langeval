@@ -1,6 +1,9 @@
 import logging
 
-from pydantic import BaseModel, validator
+try:
+    from pydantic.v1 import BaseModel, validator
+except ImportError:
+    from pydantic import BaseModel, validator
 
 from langeval.models.exception import ModelRunError
 

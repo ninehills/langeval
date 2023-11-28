@@ -25,7 +25,7 @@ dependencies = [
   "click ~= 8.0",
   "rich ~= 13.6",
   "numpy ~= 1.26",
-  "pydantic < 2",
+  "pydantic",
   "openai < 1.0.0",
   "jinja2",
   "pandas",

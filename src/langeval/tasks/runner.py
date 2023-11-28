@@ -8,7 +8,10 @@ from datetime import datetime
 from typing import Optional, Tuple
 
 import pandas as pd
-from pydantic import BaseModel
+try:
+    from pydantic.v1 import BaseModel
+except ImportError:
+    from pydantic import BaseModel
 
 from langeval.models.llms import LLM
 from langeval.tasks.task import EvalTask, Result

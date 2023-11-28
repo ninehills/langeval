@@ -5,7 +5,10 @@ import logging
 from typing import Any, Optional, Union
 
 import yaml
-from pydantic import BaseModel, validator
+try:
+    from pydantic.v1 import BaseModel, validator
+except ImportError:
+    from pydantic import BaseModel, validator
 
 from langeval.evaluators.exception import EvalRunError
 from langeval.evaluators.nlp import NLP

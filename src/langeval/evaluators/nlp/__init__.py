@@ -4,7 +4,10 @@ from typing import Any
 
 import jieba
 from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
-from pydantic import BaseModel
+try:
+    from pydantic.v1 import BaseModel
+except ImportError:
+    from pydantic import BaseModel
 from rouge_chinese import Rouge
 
 logger = logging.getLogger(__name__)

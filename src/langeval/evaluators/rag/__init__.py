@@ -3,7 +3,10 @@ import logging
 from typing import Any, Optional
 
 import jinja2
-from pydantic import BaseModel
+try:
+    from pydantic.v1 import BaseModel
+except ImportError:
+    from pydantic import BaseModel
 from sklearn.metrics import ndcg_score
 
 from langeval.evaluators.exception import EvalRunError
