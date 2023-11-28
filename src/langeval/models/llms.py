@@ -78,8 +78,18 @@ def call_qianfan(model: str, kwargs: dict, prompt: str, messages: list, timeout:
             client = qianfan.Completion(model=model, **kwargs)
             res = client.do(prompt, request_timeout=float(timeout))
         else:
+            system = ""
+            messages_converted = []
+            for message in messages:
+                if message["role"] == "system":
+                    system = message["content"]
+                    continue
+                messages_converted.append(message)
+            if system:
+                kwargs["system"] = system
+            print(messages_converted)
             client = qianfan.ChatCompletion(model=model, **kwargs)
-            res = client.do(messages, request_timeout=float(timeout))
+            res = client.do(messages_converted, request_timeout=float(timeout))
         if res.code != 200:  # type: ignore # noqa: PLR2004
             raise ModelRunError(f"qianfan call failed: {res}")
         result = res.body.get("result", None)  # type: ignore
