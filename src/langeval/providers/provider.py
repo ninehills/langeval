@@ -1,15 +1,14 @@
-from calendar import c
-from distutils.core import extension_keywords
 import enum
 import logging
-from typing import Any, Optional, Union, List
+from typing import Any, Optional, Union
 
 import yaml
 
 try:
-    from pydantic.v1 import BaseModel, Field, validator
+    import pydantic.v1 as pc
 except ImportError:
-    from pydantic import BaseModel, Field, validator
+    import pydantic as pc
+
 
 from langeval.models import LLM
 from langeval.providers.exception import ProviderRunError
@@ -26,24 +25,24 @@ class ProviderType(str, enum.Enum):
     Execute = "execute"
 
 
-class ExecSettings(BaseModel):
+class ExecSettings(pc.BaseModel):
     """Exec settings"""
 
-    command: str = Field(..., min_length=1, max_length=1024)
+    command: str = pc.Field(..., min_length=1, max_length=1024)
     kwargs: dict = {}
 
 
-class LLMSettings(BaseModel):
+class LLMSettings(pc.BaseModel):
     """LLM settings"""
 
     llm: LLM
     prompt: str
 
 
-class OutputParser(BaseModel):
+class OutputParser(pc.BaseModel):
     """Output Parser"""
 
-    name: str = Field(choices=["text", "json", "match"], default="text")
+    name: str = pc.Field(default="text")
     # json parser:
     #    output_keys defines the keys to be extracted from the json output
     #    if not defined, all keys will be extracted
@@ -86,7 +85,7 @@ class OutputParser(BaseModel):
             raise ProviderRunError(f"Invalid output parser: {self.name}")
 
 
-class Provider(BaseModel):
+class Provider(pc.BaseModel):
     """Provider Config"""
 
     # provider types, completion, chat_completion, execute
@@ -98,7 +97,7 @@ class Provider(BaseModel):
     class Config:
         validate_assignment = True
 
-    @validator("type")
+    @pc.validator("type")
     def type_must_be_valid(cls, v):  # noqa: N805
         if v not in [ProviderType.Completion, ProviderType.ChatCompletion, ProviderType.Execute]:
             raise ValueError("type must be one of completion, chat_completion, execute")

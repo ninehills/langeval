@@ -4,10 +4,12 @@ from typing import Any
 
 import jieba
 from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
+
 try:
-    from pydantic.v1 import BaseModel
+    import pydantic.v1 as pc
 except ImportError:
-    from pydantic import BaseModel
+    import pydantic as pc
+
 from rouge_chinese import Rouge
 
 logger = logging.getLogger(__name__)
@@ -100,11 +102,11 @@ metrics_eval_funcs = {
 }
 
 
-class NLP(BaseModel):
+class NLP(pc.BaseModel):
     prediction_key: str
     reference_key: str
     nlp_metrics: list[NLPMetric]
-    nlp_metrics_kwargs: dict[NLPMetric, Any] = Field(default_factory=dict)
+    nlp_metrics_kwargs: dict[NLPMetric, Any] = pc.Field(default_factory=dict)
 
     def call(self, kwargs: dict[str, Any]) -> dict[str, Any]:
         """Evaluate call"""

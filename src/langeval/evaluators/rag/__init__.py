@@ -3,10 +3,12 @@ import logging
 from typing import Any, Optional
 
 import jinja2
+
 try:
-    from pydantic.v1 import BaseModel
+    import pydantic.v1 as pc
 except ImportError:
-    from pydantic import BaseModel
+    import pydantic as pc
+
 from sklearn.metrics import ndcg_score
 
 from langeval.evaluators.exception import EvalRunError
@@ -55,7 +57,7 @@ class RagMetric(str, enum.Enum):
     AnswerCorrectness = "answer_correctness"
 
 
-class Rag(BaseModel):
+class Rag(pc.BaseModel):
     rag_metrics: list[RagMetric]
     rag_llm: Optional[LLM] = None
     answer_correctness_prompt: Optional[str] = None

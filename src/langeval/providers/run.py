@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def call_completion(conf: Provider, inputs: dict[str, Any], timeout: int) -> dict[str, str]:
-    if conf.settings is None or type(conf.settings) != LLMSettings:
+    if conf.settings is None or not isinstance(conf.settings, LLMSettings):
         raise ProviderRunError(f"call_completion invalid provider config: {conf}")
 
     prompt = jinja2.Template(conf.settings.prompt).render(**inputs)
@@ -30,7 +30,7 @@ def call_completion(conf: Provider, inputs: dict[str, Any], timeout: int) -> dic
 
 
 def call_chat_completion(conf: Provider, inputs: dict[str, Any], timeout: int):
-    if conf.settings is None or type(conf.settings) != LLMSettings:
+    if conf.settings is None or not isinstance(conf.settings, LLMSettings):
         raise ProviderRunError(f"call_completion invalid provider config: {conf}")
     messages = json.loads(conf.settings.prompt)
     for message in messages:
@@ -48,7 +48,7 @@ def call_chat_completion(conf: Provider, inputs: dict[str, Any], timeout: int):
 
 
 def batch_call_exec(conf: Provider, inputs_list: list[dict[str, Any]], timeout: int) -> list[dict[str, Any]]:
-    if conf.settings is None or type(conf.settings) != ExecSettings:
+    if conf.settings is None or not isinstance(conf.settings, ExecSettings):
         raise ProviderRunError(f"call_exec invalid provider config: {conf}")
     command = conf.settings.command
     kwargs = conf.settings.kwargs or {}

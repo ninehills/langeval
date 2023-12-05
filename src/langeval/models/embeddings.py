@@ -2,23 +2,24 @@ import logging
 
 import numpy as np
 from numpy.linalg import norm
+
 try:
-    from pydantic.v1 import BaseModel, validator
+    import pydantic.v1 as pc
 except ImportError:
-    from pydantic import BaseModel, validator
+    import pydantic as pc
 
 from langeval.models.exception import ModelRunError
 
 logger = logging.getLogger(__name__)
 
 
-class Embedding(BaseModel):
+class Embedding(pc.BaseModel):
     provider: str
     model: str
     # Model parameters, e.g. Qianfan has ak, sk
     kwargs: dict = {}
 
-    @validator("provider")
+    @pc.validator("provider")
     def provider_must_be_valid(cls, v):  # noqa: N805
         if v not in ["qianfan", "openai"]:
             raise ValueError(f"Invalid provider: {v}")
@@ -51,18 +52,17 @@ class Embedding(BaseModel):
         elif self.provider == "openai":
             try:
                 import openai
-                import openai.error
             except ImportError as e:
                 raise ValueError(
                     "Could not import openai python package. Please install it with `pip install openai`."
                 ) from e
             try:
-                response = openai.Embedding.create(
-                    model=self.model, input=texts, encoding_format="float", **self.kwargs
+                response = openai.embeddings.create(
+                    model=self.model, input=texts, encoding_format="float", timeout=timeout, **self.kwargs
                 )
                 logger.debug(f"openai embedding: {texts}")
                 return [i.get("embedding", []) for i in response["data"]]  # type: ignore
-            except openai.error.OpenAIError as e:
+            except Exception as e:
                 raise ModelRunError(f"openai call failed: {e.__class__.__name__}({e})") from e
         else:
             raise NotImplementedError()

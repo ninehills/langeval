@@ -5,10 +5,11 @@ import logging
 from typing import Any, Optional, Union
 
 import yaml
+
 try:
-    from pydantic.v1 import BaseModel, validator
+    import pydantic.v1 as pc
 except ImportError:
-    from pydantic import BaseModel, validator
+    import pydantic as pc
 
 from langeval.evaluators.exception import EvalRunError
 from langeval.evaluators.nlp import NLP
@@ -41,19 +42,19 @@ class EvaluatorType(str, enum.Enum):
     SQL = "SQL"
 
 
-class LLMGrade(BaseModel):
+class LLMGrade(pc.BaseModel):
     prompt: str
     eval_keys: list[str]
     llm: Optional[LLM] = None
 
 
-class EmbeddingCosSim(BaseModel):
+class EmbeddingCosSim(pc.BaseModel):
     pairs_keys: tuple[str, str]
     embedding: Embedding
     cos_sim_threshold: float
 
 
-class PythonCode(BaseModel):
+class PythonCode(pc.BaseModel):
     code: str
 
 
@@ -67,7 +68,7 @@ EvaluatorSettings = {
 }
 
 
-class Evaluator(BaseModel):
+class Evaluator(pc.BaseModel):
     """Evaluator"""
     # Name
     name: str
@@ -79,13 +80,14 @@ class Evaluator(BaseModel):
     def to_yaml(self) -> str:
         return yaml.dump(self.dict(exclude_unset=True), encoding="utf-8", allow_unicode=True).decode("utf-8")
 
-    @validator("type")
+    @pc.validator("type")
     def type_must_be_valid(cls, v):  # noqa: N805
         if EvaluatorType(v) not in EvaluatorSettings.keys():
             raise ValueError(f"Invalid type: {v}")
         return v
 
-    def batch_call(self, batch_inputs: list[dict[str, Any]], batch_outputs: list[dict[str, Any]], timeout=10, default_llm=None) -> list[dict[str, Any]]:
+    def batch_call(self, batch_inputs: list[dict[str, Any]], batch_outputs: list[dict[str, Any]], timeout=10,
+                   default_llm=None) -> list[dict[str, Any]]:
         """Do batch eval"""
         from langeval.evaluators.rag import eval_rag
         from langeval.evaluators.run import eval_embedding_cos_sim, eval_llm_grade, eval_python_code
@@ -108,13 +110,13 @@ class Evaluator(BaseModel):
             elif self.type == EvaluatorType.PYTHON_CODE:
                 return eval_python_code(self, kwargs_list, timeout)
             elif self.type == EvaluatorType.RAG:
-                if self.settings is None or type(self.settings) != Rag:
+                if self.settings is None or not isinstance(self.settings, Rag):
                     raise EvalRunError(f"RAG settings is not specified: {self.settings}")
                 for kwargs in kwargs_list:
                     results.append(eval_rag(self.settings, kwargs, timeout, default_llm))
                 return results
             elif self.type == EvaluatorType.NLP:
-                if self.settings is None or type(self.settings) != NLP:
+                if self.settings is None or not isinstance(self.settings, NLP):
                     raise EvalRunError(f"NLP settings is not specified: {self.settings}")
                 for kwargs in kwargs_list:
                     results.append(self.settings.call(kwargs))

@@ -1,25 +1,24 @@
 import logging
-
 from typing import Any
 
 try:
-    from pydantic.v1 import BaseModel, validator
+    import pydantic.v1 as pc
 except ImportError:
-    from pydantic import BaseModel, validator
+    import pydantic as pc
 
 from langeval.models.exception import ModelRunError
 
 logger = logging.getLogger(__name__)
 
 
-class LLM(BaseModel):
+class LLM(pc.BaseModel):
     provider: str
     model: str
     # Model parameters, e.g. Qianfan has ak, sk, etc.
     kwargs: dict = {}
     shared: dict = {}
 
-    @validator("provider")
+    @pc.validator("provider")
     def provider_must_be_valid(cls, v):  # noqa: N805
         if v not in ["qianfan", "openai", "langchain"]:
             raise ValueError(f"Invalid provider: {v}")
@@ -28,7 +27,7 @@ class LLM(BaseModel):
     def completion(self, prompt: str, timeout: int = 10) -> str:
         """Generate completion for prompt"""
         if self.provider == "qianfan":
-            if self.shared.get('client') == None:
+            if self.shared.get("client") is None:
                 try:
                     import qianfan
                     import qianfan.errors
@@ -36,8 +35,8 @@ class LLM(BaseModel):
                     raise ValueError(
                         "Could not import qianfan python package. Please install it with `pip install qianfan`."
                     ) from e
-                self.shared['client'] = qianfan.ChatCompletion(model=self.model, **self.kwargs)
-            return call_qianfan(self.shared['client'], self.kwargs, prompt, [], timeout)
+                self.shared["client"] = qianfan.ChatCompletion(model=self.model, **self.kwargs)
+            return call_qianfan(self.shared["client"], self.kwargs, prompt, [], timeout)
         elif self.provider == "openai":
             return call_openai(self.model, self.kwargs, prompt, [], timeout)
         elif self.provider == "langchain":
@@ -112,7 +111,6 @@ def call_qianfan(client: Any, kwargs: dict, prompt: str, messages: list, timeout
 def call_openai(model: str, kwargs: dict, prompt: str, messages: list, timeout: int = 30) -> str:
     try:
         import openai
-        import openai.error
     except ImportError as e:
         raise ValueError("Could not import openai python package. Please install it with `pip install openai`.") from e
     try:
@@ -120,10 +118,10 @@ def call_openai(model: str, kwargs: dict, prompt: str, messages: list, timeout: 
             # When chat model use prompt, then convert it to messages
             messages = [{"role": "user", "content": prompt}]
         if messages:
-            response = openai.ChatCompletion.create(
+            response = openai.chat.completions.create(
                 model=model,
                 messages=messages,
-                request_timeout=float(timeout),
+                timeout=float(timeout),
                 **kwargs,
             )
             logger.debug(f"openai completion: {messages} -> {response}")
@@ -133,13 +131,13 @@ def call_openai(model: str, kwargs: dict, prompt: str, messages: list, timeout: 
             if "max_tokens" not in kwargs:
                 # Default to 1024 tokens
                 kwargs["max_tokens"] = 1024
-            response = openai.Completion.create(
+            response = openai.completions.create(
                 model=model,
                 prompt=prompt,
-                request_timeout=float(timeout),
+                timeout=float(timeout),
                 **kwargs,
             )
             logger.debug(f"openai completion: {prompt} -> {response}")
             return response.choices[0].text  # type: ignore
-    except openai.error.OpenAIError as e:
+    except Exception as e:
         raise ModelRunError(f"openai call failed: {e.__class__.__name__}({e})") from e

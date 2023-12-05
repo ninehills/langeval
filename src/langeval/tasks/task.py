@@ -5,36 +5,37 @@ import logging
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from time import perf_counter as pc
+from time import perf_counter
 from typing import Any, List, Optional
 
 import pandas as pd
 import yaml
-try:
-    from pydantic.v1 import BaseModel, Field, validator
-except ImportError:
-    from pydantic import BaseModel, Field, validator
 
-from langeval.evaluators import Evaluator, EvaluatorSettings
+try:
+    import pydantic.v1 as pc
+except ImportError:
+    import pydantic as pc
+
+from langeval.evaluators import Evaluator
 from langeval.models import LLM
 from langeval.providers import Provider
 
 logger = logging.getLogger(__name__)
 
-class RunResult(BaseModel):
+class RunResult(pc.BaseModel):
     """Result for one data run"""
     error: str = ""
     outputs: dict[str, Any] = {}
     elapsed_secs: float = 0
 
-class EvalResult(BaseModel):
+class EvalResult(pc.BaseModel):
     """Result for one data eval"""
     error: str = ""
     outputs: dict[str, Any] = {}
     elapsed_secs: float = 0
 
 
-class Result(BaseModel):
+class Result(pc.BaseModel):
     # uuid: str
     inputs: dict[str, Any]
     run: RunResult = RunResult()
@@ -48,11 +49,11 @@ class Result(BaseModel):
         return cls(**json.loads(json_str))
 
 
-class TaskRunConfig(BaseModel):
-    parallelism: int = Field(default=1, ge=1, le=30)
-    timeout: int = Field(default=30, ge=1, le=600)
-    rounds: int = Field(default=1, ge=1, le=10)
-    batch_size: int = Field(default=1, ge=1, le=10000)
+class TaskRunConfig(pc.BaseModel):
+    parallelism: int = pc.Field(default=1, ge=1, le=30)
+    timeout: int = pc.Field(default=30, ge=1, le=600)
+    rounds: int = pc.Field(default=1, ge=1, le=10)
+    batch_size: int = pc.Field(default=1, ge=1, le=10000)
 
     def to_yaml(self) -> str:
         return yaml.safe_dump(self.dict(exclude_unset=True), encoding="utf-8", allow_unicode=True).decode("utf-8")
@@ -65,12 +66,12 @@ class TaskRunConfig(BaseModel):
             raise ValueError(f"Invalid yaml: {e}") from e
 
 
-class EvalTask(BaseModel):
+class EvalTask(pc.BaseModel):
     # config
     provider: Optional[Provider] = None
     input_dataset_binary: Optional[bytes] = None
     # Only jsonl, csv supported
-    input_dataset_name: str = Field(..., min_length=1, max_length=255)
+    input_dataset_name: str = pc.Field(..., min_length=1, max_length=255)
     # evaluator
     evaluators: List[Evaluator]
     # Run config
@@ -79,7 +80,7 @@ class EvalTask(BaseModel):
     class Config:
         validate_assignment = True
 
-    @validator("input_dataset_name")
+    @pc.validator("input_dataset_name")
     def input_dataset_name_must_be_valid(cls, v):  # noqa: N805
         if not v.endswith(".csv") and not v.endswith(".jsonl"):
             raise ValueError(f"Invalid input_dataset_name: {v}")
@@ -128,7 +129,12 @@ class EvalTask(BaseModel):
             with ThreadPoolExecutor(max_workers=self.run_config.parallelism) as executor:
                 # Submit tasks for execution
                 futures = [
-                    executor.submit(self.batch_eval, evaluator=evaluator, batch_data=batch_data, default_eval_llm=default_eval_llm) for batch_data in batch_data_list
+                    executor.submit(
+                        self.batch_eval,
+                        evaluator=evaluator,
+                        batch_data=batch_data,
+                        default_eval_llm=default_eval_llm,
+                    ) for batch_data in batch_data_list
                 ]
 
                 # Collect results from completed tasks
@@ -140,7 +146,7 @@ class EvalTask(BaseModel):
 
     def batch_run(self, batch_data: list[Result]) -> list[Result]:
         """Batch run data"""
-        start = pc()
+        start = perf_counter()
         run_error = ""
         if self.provider is not None:
             inputs = [data.inputs for data in batch_data]
@@ -157,11 +163,14 @@ class EvalTask(BaseModel):
 
             for data in batch_data:
                 data.run.error = run_error
-                data.run.elapsed_secs = pc() - start
+                data.run.elapsed_secs = perf_counter() - start
         return batch_data
 
-    def batch_eval(self, evaluator: Evaluator, batch_data: list[Result], default_eval_llm: Optional[LLM] = None) -> list[Result]:
-        start = pc()
+    def batch_eval(self,
+                   evaluator: Evaluator,
+                   batch_data: list[Result],
+                   default_eval_llm: Optional[LLM] = None) -> list[Result]:
+        start = perf_counter()
         run_error = ""
         for data in batch_data:
             data.evals[evaluator.name] = EvalResult()
@@ -180,7 +189,7 @@ class EvalTask(BaseModel):
 
         for data in batch_data:
             data.evals[evaluator.name].error = run_error
-            data.evals[evaluator.name].elapsed_secs = pc() - start
+            data.evals[evaluator.name].elapsed_secs = perf_counter() - start
         return batch_data
 
     def split_dataset(self) -> list[dict[str, Any]]:

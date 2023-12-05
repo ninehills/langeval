@@ -1,14 +1,17 @@
 import logging
 from typing import Any
 
-from pydantic.v1 import BaseModel
+try:
+    import pydantic.v1 as pc
+except ImportError:
+    import pydantic as pc
 
 from .sqleval import compare_query_results  # noqa: TID252
 
 logger = logging.getLogger(__name__)
 
 
-class SQLEvaluator(BaseModel):
+class SQLEvaluator(pc.BaseModel):
     """SQL Evaluator
 
     from: <https://defog.ai/blog/open-sourcing-sqleval/>
