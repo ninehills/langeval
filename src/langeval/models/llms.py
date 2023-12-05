@@ -1,5 +1,7 @@
 import logging
 
+from typing import Any
+
 try:
     from pydantic.v1 import BaseModel, validator
 except ImportError:
@@ -15,6 +17,7 @@ class LLM(BaseModel):
     model: str
     # Model parameters, e.g. Qianfan has ak, sk, etc.
     kwargs: dict = {}
+    shared: dict = {}
 
     @validator("provider")
     def provider_must_be_valid(cls, v):  # noqa: N805
@@ -25,7 +28,16 @@ class LLM(BaseModel):
     def completion(self, prompt: str, timeout: int = 10) -> str:
         """Generate completion for prompt"""
         if self.provider == "qianfan":
-            return call_qianfan(self.model, self.kwargs, prompt, [], timeout)
+            if self.shared.get('client') == None:
+                try:
+                    import qianfan
+                    import qianfan.errors
+                except ImportError as e:
+                    raise ValueError(
+                        "Could not import qianfan python package. Please install it with `pip install qianfan`."
+                    ) from e
+                self.shared['client'] = qianfan.ChatCompletion(model=self.model, **self.kwargs)
+            return call_qianfan(self.shared['client'], self.kwargs, prompt, [], timeout)
         elif self.provider == "openai":
             return call_openai(self.model, self.kwargs, prompt, [], timeout)
         elif self.provider == "langchain":
@@ -65,7 +77,7 @@ class LLM(BaseModel):
             raise ValueError(f"Invalid provider: {self.provider}")
 
 
-def call_qianfan(model: str, kwargs: dict, prompt: str, messages: list, timeout: int) -> str:
+def call_qianfan(client: Any, kwargs: dict, prompt: str, messages: list, timeout: int) -> str:
     try:
         import qianfan
         import qianfan.errors
@@ -75,8 +87,7 @@ def call_qianfan(model: str, kwargs: dict, prompt: str, messages: list, timeout:
         ) from e
     try:
         if prompt:
-            client = qianfan.Completion(model=model, **kwargs)
-            res = client.do(prompt, request_timeout=float(timeout))
+            messages_converted = [{"role": "user", "content": prompt}]
         else:
             system = ""
             messages_converted = []
@@ -87,9 +98,7 @@ def call_qianfan(model: str, kwargs: dict, prompt: str, messages: list, timeout:
                 messages_converted.append(message)
             if system:
                 kwargs["system"] = system
-            print(messages_converted)
-            client = qianfan.ChatCompletion(model=model, **kwargs)
-            res = client.do(messages_converted, request_timeout=float(timeout))
+        res = client.do(messages_converted, request_timeout=float(timeout))
         if res.code != 200:  # type: ignore # noqa: PLR2004
             raise ModelRunError(f"qianfan call failed: {res}")
         result = res.body.get("result", None)  # type: ignore
