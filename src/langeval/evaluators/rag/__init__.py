@@ -11,7 +11,7 @@ from sklearn.metrics import ndcg_score
 
 from langeval.evaluators.exception import EvalRunError
 from langeval.evaluators.rag.utils import overlap_coefficient_contain
-from langeval.models import LLM, Embedding
+from langeval.models import LLM
 from langeval.providers.output_parser import SimpleJsonOutputParser
 
 logger = logging.getLogger(__name__)

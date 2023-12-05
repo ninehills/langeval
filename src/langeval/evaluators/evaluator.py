@@ -13,6 +13,7 @@ except ImportError:
 from langeval.evaluators.exception import EvalRunError
 from langeval.evaluators.nlp import NLP
 from langeval.evaluators.rag import Rag
+from langeval.evaluators.sql import SQLEvaluator
 from langeval.models import LLM, Embedding
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,8 @@ class EvaluatorType(str, enum.Enum):
     RAG = "RAG"
     # Some NLP metrics
     NLP = "NLP"
+    # sql evaluator
+    SQL = "SQL"
 
 
 class LLMGrade(BaseModel):
@@ -60,6 +63,7 @@ EvaluatorSettings = {
     EvaluatorType.PYTHON_CODE: PythonCode,
     EvaluatorType.RAG: Rag,
     EvaluatorType.NLP: NLP,
+    EvaluatorType.SQL: SQLEvaluator,
 }
 
 
@@ -115,6 +119,13 @@ class Evaluator(BaseModel):
                 for kwargs in kwargs_list:
                     results.append(self.settings.call(kwargs))
                 return results
+            elif self.type == EvaluatorType.SQL:
+                if self.settings is None or type(self.settings) != SQLEvaluator:
+                    raise EvalRunError(f"SQL settings is not specified: {self.settings}")
+                for kwargs in kwargs_list:
+                    results.append(self.settings.call(kwargs, timeout))
+                return results
+
         except Exception as e:
             logger.exception(f"eval failed: {e}")
             logger.debug(f"evaluator {self} eval failed: {e}", exc_info=True)

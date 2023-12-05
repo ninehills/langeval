@@ -104,7 +104,7 @@ class NLP(BaseModel):
     prediction_key: str
     reference_key: str
     nlp_metrics: list[NLPMetric]
-    nlp_metrics_kwargs: dict[NLPMetric, Any] = {}
+    nlp_metrics_kwargs: dict[NLPMetric, Any] = Field(default_factory=dict)
 
     def call(self, kwargs: dict[str, Any]) -> dict[str, Any]:
         """Evaluate call"""

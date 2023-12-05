@@ -33,7 +33,8 @@ dependencies = [
   "scikit-learn",
   "rouge_chinese",
   "jieba",
-  "nltk"
+  "nltk",
+  "func_timeout"
 ]
 
 [project.urls]
