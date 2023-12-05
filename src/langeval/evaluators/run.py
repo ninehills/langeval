@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 def eval_python_code(evaluator: Evaluator, kwargs_list: list[dict[str, Any]], timeout) -> list[dict[str, Any]]:
     """Do python code eval"""
-    if evaluator.settings is None or type(evaluator.settings) != PythonCode:
+    if evaluator.settings is None or not isinstance(evaluator.settings, PythonCode):
         msg = "PYTHON_CODE not specified"
         raise EvalRunError(msg)
 
@@ -37,7 +37,7 @@ def eval_python_code(evaluator: Evaluator, kwargs_list: list[dict[str, Any]], ti
 
 def eval_embedding_cos_sim(evaluator: Evaluator, kwargs: dict[str, Any], timeout) -> dict[str, Any]:
     """Embedding Cosine Similarity"""
-    if evaluator.settings is None or type(evaluator.settings) != EmbeddingCosSim:
+    if evaluator.settings is None or not isinstance(evaluator.settings, EmbeddingCosSim):
         raise EvalRunError("EMBEDDING_COS_SIM not specified")
     if len(evaluator.settings.pairs_keys) != 2: # noqa: PLR2004
         raise EvalRunError("EMBEDDING_COS_SIM input/output keys not specified")
@@ -54,7 +54,7 @@ def eval_embedding_cos_sim(evaluator: Evaluator, kwargs: dict[str, Any], timeout
 
 def eval_llm_grade(evaluator: Evaluator, kwargs: dict[str, Any], timeout, default_llm) -> dict[str, Any]:
     """Use LLM as Judge for Grade"""
-    if evaluator.settings is None or type(evaluator.settings) != LLMGrade:
+    if evaluator.settings is None or not isinstance(evaluator.settings, LLMGrade):
         raise EvalRunError("LLM_GRADE not specified")
     if evaluator.settings.llm:
         llm = evaluator.settings.llm

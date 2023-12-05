@@ -72,7 +72,7 @@ langeval.add_command(show)
 
 def main():  # no cov
     try:
-        return langeval(prog_name="langeval", windows_expand_args=False)
+        return langeval(prog_name="langeval", windows_expand_args=False) # type: ignore
     except Exception:
         from rich.console import Console
 

@@ -2,7 +2,7 @@
 """
 import json
 import re
-from typing import Any, Callable
+from typing import Any, Callable, Dict
 
 
 class OutputParserError(ValueError):
@@ -155,3 +155,51 @@ class SimpleJsonOutputParser:
     @property
     def _type(self) -> str:
         return "simple_json_output_parser"
+
+
+class SQLParser:
+    """Parse the sql output of an LLM call.
+
+    sql output is expected to be in the format:
+    ---
+    xxx
+    ```sql
+    <sql query>
+    ```
+    xxx
+    ---
+
+    Sometime the output is in the format:
+    ---
+    <sql query>
+    ```
+    xxxxxx
+    ---
+    """
+
+    @property
+    def _type(self) -> str:
+        """Return the type key."""
+        return "sql_parser"
+
+    def parse(self, text: str) -> Dict[str, str]:
+        """Parse the output of an LLM call.
+
+        Args:
+            text (str): output of an LLM call
+
+        Returns:
+            Dict[str, str]: a dict of parsed output
+                - sql: the sql query
+                - text: the original output text
+
+        """
+        origin_text = text
+        sql_split =  text.split('```sql')
+        if len(sql_split) > 1:
+            text = sql_split[1]
+        try:
+            sql = text.split('```')[0]
+        except IndexError:
+            raise OutputParserError(f"Invalid sql output: {text}")
+        return {"sql": sql, "text": origin_text}

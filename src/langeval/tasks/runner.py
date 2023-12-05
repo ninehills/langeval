@@ -8,10 +8,11 @@ from datetime import datetime
 from typing import Optional, Tuple
 
 import pandas as pd
+
 try:
-    from pydantic.v1 import BaseModel
+    import pydantic.v1 as pc
 except ImportError:
-    from pydantic import BaseModel
+    import pydantic as pc
 
 from langeval.models.llms import LLM
 from langeval.tasks.task import EvalTask, Result
@@ -26,12 +27,12 @@ class TaskRunnerStatus(str, enum.Enum):
     CANCELLED = "CANCELLED"
     FAILED = "FAILED"
 
-class Progress(BaseModel):
+class Progress(pc.BaseModel):
     total: int = 0
     finished: int = 0
     failed: int = 0
 
-class TaskProgress(BaseModel):
+class TaskProgress(pc.BaseModel):
     run: Progress
     evals: dict[str, Progress]
 
@@ -189,7 +190,9 @@ class TaskRunner:
                         progress.evals[evaluator.name].failed += 1
                     else:
                         progress.evals[evaluator.name].finished += 1
-                    self.update_task_log(f"[runner._run] task eval {evaluator.name} progress {progress.evals[evaluator.name]}, result: {result}")
+                    self.update_task_log(
+                        f"[runner._run] task eval {evaluator.name} progress "
+                        "{progress.evals[evaluator.name]}, result: {result}")
                     self.update_task_progress(progress, [result])
                     new_results.append(result)
 
@@ -227,7 +230,8 @@ class TaskRunner:
                 }
             ]
         )
-        # "evals": {"exact_match": {"error": "", "outputs": {"exact_match": 1.0}, "elapsed_secs": 5.728999894927256e-06}}
+        # "evals": {"exact_match": {
+        #   "error": "", "outputs": {"exact_match": 1.0}, "elapsed_secs": 5.728999894927256e-06}}
         def flatten_outputs(data_row):
             """
             从嵌套字典中提取并展平 'outputs' 键下的内容。
@@ -236,12 +240,12 @@ class TaskRunner:
             """
             flattened = {}
             for key, value in data_row.items():
-                if 'outputs' in value:
-                    for output_key, output_value in value['outputs'].items():
+                if "outputs" in value:
+                    for output_key, output_value in value["outputs"].items():
                         flattened_key = f"{key}.outputs.{output_key}"
                         flattened[flattened_key] = output_value
             return flattened
-        flattened_evals = df['evals'].apply(flatten_outputs)
+        flattened_evals = df["evals"].apply(flatten_outputs)
         flattened_df = pd.DataFrame(flattened_evals.tolist())
         flattened_df.fillna(0.0, inplace=True)
 

@@ -23,17 +23,19 @@ classifiers = [
 ]
 dependencies = [
   "click ~= 8.0",
-  "rich ~= 13.6",
-  "numpy ~= 1.26",
-  "pydantic",
-  "openai < 1.0.0",
-  "jinja2",
+  "rich ~= 13.0",
+  "numpy ~= 1.0",
+  "pydantic ~= 2.0",
+  "openai > 1.0",
+  "Jinja2",
   "pandas",
   "PyYAML",
   "scikit-learn",
   "rouge_chinese",
   "jieba",
-  "nltk"
+  "nltk",
+  "func_timeout",
+  "sqlalchemy"
 ]
 
 [project.urls]
