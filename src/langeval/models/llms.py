@@ -7,6 +7,8 @@ except ImportError:
     import pydantic as pc
 
 from langeval.models.exception import ModelRunError
+from langeval.models.openai import OpenAI
+from langeval.models.qianfan import Qianfan
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ class LLM(pc.BaseModel):
     model: str
     # Model parameters, e.g. Qianfan has ak, sk, etc.
     kwargs: dict = {}
-    shared: dict = {}
+    instance: Any = None
 
     @pc.validator("provider")
     def provider_must_be_valid(cls, v):  # noqa: N805
@@ -27,18 +29,13 @@ class LLM(pc.BaseModel):
     def completion(self, prompt: str, timeout: int = 10) -> str:
         """Generate completion for prompt"""
         if self.provider == "qianfan":
-            if self.shared.get("client") is None:
-                try:
-                    import qianfan
-                    import qianfan.errors
-                except ImportError as e:
-                    raise ValueError(
-                        "Could not import qianfan python package. Please install it with `pip install qianfan`."
-                    ) from e
-                self.shared["client"] = qianfan.ChatCompletion(model=self.model, **self.kwargs)
-            return call_qianfan(self.shared["client"], self.kwargs, prompt, [], timeout)
+            if self.instance is None:
+                self.instance = Qianfan(self.model, **self.kwargs)
+            return self.instance.call(prompt, [], timeout, **self.kwargs)
         elif self.provider == "openai":
-            return call_openai(self.model, self.kwargs, prompt, [], timeout)
+            if self.instance is None:
+                self.instance = OpenAI(self.model, **self.kwargs)
+            return self.instance.call(prompt, [], timeout, **self.kwargs)
         elif self.provider == "langchain":
             try:
                 from langchain.llms.loading import load_llm_from_config
@@ -67,77 +64,14 @@ class LLM(pc.BaseModel):
     def chat_completion(self, messages: list[dict[str, str]], timeout: int = 10) -> str:
         """Generate chat completion for messages"""
         if self.provider == "qianfan":
-            return call_qianfan(self.model, self.kwargs, "", messages, timeout)
+            if self.instance is None:
+                self.instance = Qianfan(self.model, **self.kwargs)
+            return self.instance.call("", messages, timeout, **self.kwargs)
         elif self.provider == "openai":
-            return call_openai(self.model, self.kwargs, "", messages, timeout)
+            if self.instance is None:
+                self.instance = OpenAI(self.model, **self.kwargs)
+            return self.instance.call("", messages, timeout, **self.kwargs)
         elif self.provider == "langchain":
             raise ValueError("langchain does not support chat_model load yet")
         else:
             raise ValueError(f"Invalid provider: {self.provider}")
-
-
-def call_qianfan(client: Any, kwargs: dict, prompt: str, messages: list, timeout: int) -> str:
-    try:
-        import qianfan
-        import qianfan.errors
-    except ImportError as e:
-        raise ValueError(
-            "Could not import qianfan python package. Please install it with `pip install qianfan`."
-        ) from e
-    try:
-        if prompt:
-            messages_converted = [{"role": "user", "content": prompt}]
-        else:
-            system = ""
-            messages_converted = []
-            for message in messages:
-                if message["role"] == "system":
-                    system = message["content"]
-                    continue
-                messages_converted.append(message)
-            if system:
-                kwargs["system"] = system
-        res = client.do(messages_converted, request_timeout=float(timeout))
-        if res.code != 200:  # type: ignore # noqa: PLR2004
-            raise ModelRunError(f"qianfan call failed: {res}")
-        result = res.body.get("result", None)  # type: ignore
-        if not result:
-            raise ModelRunError(f"qianfan call failed: {res}")
-        return result
-    except qianfan.errors.QianfanError as e:
-        raise ModelRunError(f"qianfan call failed: {e.__class__.__name__}({e})") from e
-
-
-def call_openai(model: str, kwargs: dict, prompt: str, messages: list, timeout: int = 30) -> str:
-    try:
-        import openai
-    except ImportError as e:
-        raise ValueError("Could not import openai python package. Please install it with `pip install openai`.") from e
-    try:
-        if not model.endswith("-instruct") and prompt:
-            # When chat model use prompt, then convert it to messages
-            messages = [{"role": "user", "content": prompt}]
-        if messages:
-            response = openai.chat.completions.create(
-                model=model,
-                messages=messages,
-                timeout=float(timeout),
-                **kwargs,
-            )
-            logger.debug(f"openai completion: {messages} -> {response}")
-            return response.choices[0].message["content"]  # type: ignore
-        else:
-            kwargs = kwargs.copy()
-            if "max_tokens" not in kwargs:
-                # Default to 1024 tokens
-                kwargs["max_tokens"] = 1024
-            response = openai.completions.create(
-                model=model,
-                prompt=prompt,
-                timeout=float(timeout),
-                **kwargs,
-            )
-            logger.debug(f"openai completion: {prompt} -> {response}")
-            return response.choices[0].text  # type: ignore
-    except Exception as e:
-        raise ModelRunError(f"openai call failed: {e.__class__.__name__}({e})") from e

@@ -1,0 +1,35 @@
+provider:
+  type: "chat_completion"
+  input_variables: ["question", "A", "B", "C", "D"]
+  output_parser:
+    name: match
+    kwargs:
+      match_key: "choice"
+      match_re: |
+        Choice[:：]\s*([ABCD])
+  settings:
+    llm:
+      provider: "openai"
+      model: "gpt-3.5-turbo"
+      kwargs:
+        temperature: 0.1
+    prompt: |
+      [
+        {"role": "system", "content": "你是专家，请仔细阅读并一步步的思考【问题】，在【候选答案】中选择唯一正确的答案，并按照【输出格式】输出。\n## 【输出格式】\n输出两行：\n\nReasoning: <此处填写思考过程，请注意特殊符号的转义。>\nChoice: <必填字段，此处仅填写最终选项，为 A、B、C、D 中的一个>\n\n"},
+        {"role": "user", "content": "【问题】：`公开发行公司债券，证监会同意注册的决定自作出之日起一定期限内有效，发行人应当该期限内发行公司债券。该期限是____。`\n【候选答案】：\nA: `6个月` \nB: `1年`\nC: `2年`\nD: `3年`\n\n"},
+        {"role": "assistant", "content": "Reasoning: 中国证监会同意注册的决定自作出之日起2年内有效，发行人应当在注册决定有效期内发行公司债券，并自主选择发行时点。所以正确答案是 C: 2年。\nChoice: C\n\n"},
+        {"role": "user", "content": "【问题】：`{{question}}` \n【候选答案】：\nA: `{{A}}` \nB: `{{B}}`\nC: `{{C}}`\nD: `{{D}}`\n\n"}
+      ]
+input_dataset_name: "ceval-with-answer.jsonl"
+evaluators:
+  - name: exact_match
+    type: NLP
+    settings:
+      prediction_key: "choice"
+      reference_key: "answer"
+      nlp_metrics: ["exact_match"]
+run_config:
+  parallelism: 6 # 并发度
+  timeout: 120 # 超时时间
+  rounds: 1 # 评测轮数
+  batch_size: 2 # 批量运行/评测

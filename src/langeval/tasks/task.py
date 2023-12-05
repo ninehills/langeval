@@ -158,7 +158,7 @@ class EvalTask(pc.BaseModel):
                 for i, data in enumerate(batch_data):
                     data.run.outputs = run_outputs[i]
             except Exception as e:
-                logger.debug(f"provider call failed: {e}", exc_info=True)
+                logger.error(f"provider call failed: {e}", exc_info=True)
                 run_error = str(e)
 
             for data in batch_data:
