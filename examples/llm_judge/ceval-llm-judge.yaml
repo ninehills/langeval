@@ -1,7 +1,8 @@
 provider:
   type: "completion"
   input_variables: ["question", "A", "B", "C", "D"]
-  output_parser: json
+  output_parser:
+    name: json
   settings:
     llm:
       provider: "openai"
