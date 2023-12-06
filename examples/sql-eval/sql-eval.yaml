@@ -43,7 +43,8 @@ evaluators:
       question_key: "query"
       sql_key: "sql"
       golden_sql_key: "golden_sql"
-      db_url: "sqlite:///dusql_sample.sqlite"
+      db_url: "sqlite:///{db_name}.sqlite"
+      db_name_key: "db_id"
 run_config:
   parallelism: 5 # 并发度
   timeout: 120 # 超时时间
