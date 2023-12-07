@@ -12,9 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAI:
-    def __init__(self, model: str, **kwargs: Any):
+    def __init__(self, model: str):
         self.model = model
-        self.kwargs = kwargs
         self.client = openai.Client()
 
     def call(self, prompt: str, messages: list, timeout: int, **kwargs: Any) -> str:

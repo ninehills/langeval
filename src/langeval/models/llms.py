@@ -30,11 +30,11 @@ class LLM(pc.BaseModel):
         """Generate completion for prompt"""
         if self.provider == "qianfan":
             if self.instance is None:
-                self.instance = QianfanCompletion(self.model, **self.kwargs)
-            return self.instance.call(prompt, timeout)
+                self.instance = QianfanCompletion(self.model)
+            return self.instance.call(prompt, timeout, **self.kwargs)
         elif self.provider == "openai":
             if self.instance is None:
-                self.instance = OpenAI(self.model, **self.kwargs)
+                self.instance = OpenAI(self.model)
             return self.instance.call(prompt, [], timeout, **self.kwargs)
         elif self.provider == "langchain":
             try:
@@ -65,11 +65,11 @@ class LLM(pc.BaseModel):
         """Generate chat completion for messages"""
         if self.provider == "qianfan":
             if self.instance is None:
-                self.instance = QianfanChatCompletion(self.model, **self.kwargs)
-            return self.instance.call("", messages, timeout)
+                self.instance = QianfanChatCompletion(self.model)
+            return self.instance.call("", messages, timeout, **self.kwargs)
         elif self.provider == "openai":
             if self.instance is None:
-                self.instance = OpenAI(self.model, **self.kwargs)
+                self.instance = OpenAI(self.model)
             return self.instance.call("", messages, timeout, **self.kwargs)
         elif self.provider == "langchain":
             raise ValueError("langchain does not support chat_model load yet")
