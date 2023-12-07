@@ -8,7 +8,7 @@ except ImportError:
 
 from langeval.models.exception import ModelRunError
 from langeval.models.openai import OpenAI
-from langeval.models.qianfan import QianfanChatCompletion, QianfanCompletion
+from langeval.models.qianfan import Qianfan
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +30,8 @@ class LLM(pc.BaseModel):
         """Generate completion for prompt"""
         if self.provider == "qianfan":
             if self.instance is None:
-                self.instance = QianfanCompletion(self.model)
-            return self.instance.call(prompt, timeout, **self.kwargs)
+                self.instance = Qianfan(self.model)
+            return self.instance.call(prompt, [], timeout, **self.kwargs)
         elif self.provider == "openai":
             if self.instance is None:
                 self.instance = OpenAI(self.model)
@@ -65,7 +65,7 @@ class LLM(pc.BaseModel):
         """Generate chat completion for messages"""
         if self.provider == "qianfan":
             if self.instance is None:
-                self.instance = QianfanChatCompletion(self.model)
+                self.instance = Qianfan(self.model)
             return self.instance.call("", messages, timeout, **self.kwargs)
         elif self.provider == "openai":
             if self.instance is None:
