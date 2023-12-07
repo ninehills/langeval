@@ -35,7 +35,7 @@ provider:
       【问题】：`{{ query }}`
       【SQL 查询语句】：
       ```sql
-input_dataset_name: "dusql_sample.jsonl"
+input_dataset_name: "output/dusql_sample.jsonl"
 evaluators:
   - name: sqleval
     type: SQL

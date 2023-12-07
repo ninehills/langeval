@@ -249,5 +249,8 @@ class TaskRunner:
         flattened_df = pd.DataFrame(flattened_evals.tolist())
         flattened_df.fillna(0.0, inplace=True)
 
-        eval_stats = pd.DataFrame(flattened_df).describe().T
+        if flattened_df.empty:
+            eval_stats = pd.DataFrame()
+        else:
+            eval_stats = pd.DataFrame(flattened_df).describe().T
         return running_stats, eval_stats

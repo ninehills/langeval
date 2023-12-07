@@ -34,7 +34,7 @@ def run(app: Application, task_file, output, interactive, web, sample, sample_se
     """
     # 1. Load task
     task_file_content = task_file.read()
-    task = EvalTask.from_yaml(task_file_content, dataset_dir=os.path.dirname(task_file.name))
+    task = EvalTask.from_yaml(task_file_content)
     task_id = f"{datetime.now().strftime('%y%m%d%H%M')}-{uuid.uuid4().hex[:4]}"
     app.display_info(f">>> Loaded task from {task_file.name} successfully, task_id: {task_id}")
 
@@ -43,17 +43,17 @@ def run(app: Application, task_file, output, interactive, web, sample, sample_se
         output = f"output/{task_id}"
     app.display_info(f"Output dir: {output}")
     if not os.path.exists(output):
-        if interactive:
-            if not app.confirm(f"Create output dir: {output}?"):
-                app.abort(f"Output dir {output} not exists.")
         os.makedirs(output)
         app.display_info(f"Output dir created: {output}")
+    else:
+        app.abort(f"Output dir {output} exists, exit.")
 
     # 3. Copy task file & input dataset to output dir
     with open(os.path.join(output, TaskOutputVars.TaskMeta), "w") as f:
         f.write(task_file_content)
     if task.input_dataset_name and task.input_dataset_binary:
-        with open(os.path.join(output, task.input_dataset_name), "wb") as f:
+        input_dataset_filename = os.path.basename(task.input_dataset_name)
+        with open(os.path.join(output, input_dataset_filename), "wb") as f:
             f.write(task.input_dataset_binary)
 
     # 4. Run task
