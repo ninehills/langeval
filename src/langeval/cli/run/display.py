@@ -2,14 +2,10 @@ import json
 import os
 
 import pandas as pd
-try:
-    from pydantic.v1 import BaseModel
-except ImportError:
-    from pydantic import BaseModel
 
 from langeval.cli.application import Application
 from langeval.cli.constant import TaskOutputVars
-from langeval.tasks import Result, TaskRunner
+from langeval.tasks import TaskRunner
 
 
 def save_task_result(file: str, running_stats, eval_stats):

@@ -1,0 +1,52 @@
+provider:
+  type: "completion"
+  input_variables: ["query", "create_tables", "join_pairs", "db_id"]
+  output_parser:
+    name: sql
+  settings:
+    llm:
+      provider: "qianfan"
+      model: "SQLCoder-7B"
+      kwargs:
+        temperature: 0.7
+    prompt: |
+      ## 任务
+      你是一名数据库专家，请生成 SQL 语句回答如下提问：
+      `{{ query }}`
+
+      ### 表结构
+      提问依赖的表结构如下：
+      {% for create_table in create_tables %}
+      {{ create_table }}
+      {% endfor %}
+
+      {% for pair0, pair1 in join_pairs %}-- {{ pair0 }} 可以和 {{ pair1 }} JOIN。
+      {% endfor %}
+
+      ### 规则
+
+      - 百分比均转换为浮点数。比如 10.5% 转换为 0.105。
+      - SQL 应该满足 SQLite 格式要求，并满足 SQL 标准。
+
+      ### 输出
+
+      通过给定的表结构，输出【问题】对应的【SQL 查询语句】：
+
+      【问题】：`{{ query }}`
+      【SQL 查询语句】：
+      ```sql
+input_dataset_name: "dusql_sample.jsonl"
+evaluators:
+  - name: sqleval
+    type: SQL
+    settings:
+      question_key: "query"
+      sql_key: "sql"
+      golden_sql_key: "golden_sql"
+      db_url: "sqlite:///{db_name}.sqlite"
+      db_name_key: "db_id"
+run_config:
+  parallelism: 5 # 并发度
+  timeout: 120 # 超时时间
+  rounds: 1 # 评测轮数
+  batch_size: 1 # 批量运行/评测
