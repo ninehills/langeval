@@ -33,12 +33,9 @@ pip install langeval-cli
 
 TODOs:
 
-- merge uncommit changes in wsl
-- support openai 2.0
-- both support pydantic v1 & v2
-- support qianfan the latest version
-- total re-write examples
-- support re-run
+- Refactor RAG Eval
+- Support only-eval from run outputs.
+- Support re-run tasks.
 
 ## How to use
 

@@ -5,8 +5,15 @@ import pandas as pd
 
 from langeval.cli.application import Application
 from langeval.cli.constant import TaskOutputVars
-from langeval.tasks import TaskRunner
+from langeval.tasks import Result, TaskRunner
 
+
+def save_task_merged_result(file: str, results: list[Result]):
+    with open(file, "w") as f:
+        for result in results:
+            data = result.inputs
+            data.update(result.run.outputs)
+            f.write(json.dumps(data, ensure_ascii=False) + "\n")
 
 def save_task_result(file: str, running_stats, eval_stats):
     result = {
