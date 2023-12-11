@@ -155,17 +155,19 @@ class TaskRunner:
                 self.update_task_log("[runner._run] task sample to 1 data.")
                 data_lists = random.Random(self.sample_seed).sample(data_lists, self.sample)
             total = len(data_lists)
-            input_lists = [Result(inputs=d) for d in data_lists]
+            self.results = [Result(inputs=d) for d in data_lists]
             if self.task.provider is not None:
+                self.update_task_log("[runner._run] provider start run.")
                 progress = TaskProgress(run=Progress(total=total), evals={})
-                for result in self.task.run_provider(input_lists, self.cancel_event):
+                new_results = []
+                for result in self.task.run_provider(self.results, self.cancel_event):
                     if result.run.error:
                         progress.run.failed += 1
                     else:
                         progress.run.finished += 1
                     self.update_task_log(f"[runner._run] task progress {progress}, result: {result}")
                     self.update_task_progress(progress, [result])
-                    self.results.append(result)
+                    new_results.append(result)
 
                     # Check if task be cancelled
                     if self.cancel_event.is_set():
@@ -173,6 +175,7 @@ class TaskRunner:
                         self.set_status(TaskRunnerStatus.CANCELLED)
                         self.update_task_log("[runner._run] task cancelled")
                         return
+                self.results = new_results
                 logger.info(f"[task-{self.uuid}][runner._run] end task run")
                 if progress.run.failed == progress.run.total:
                     self.finished_time = time.time()
@@ -182,6 +185,7 @@ class TaskRunner:
 
             progress = self.progress
             for evaluator in self.task.evaluators:
+                self.update_task_log(f"[runner._run] evaluator {evaluator.name} start run.")
                 progress.evals[evaluator.name] = Progress(total=total)
                 new_results = []
                 for result in self.task.run_eval(self.results, self.cancel_event,
@@ -213,11 +217,18 @@ class TaskRunner:
     def statistic(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         df = pd.DataFrame([i.dict() for i in self.results])
         total_count = len(df)
-        run_success_rate = df["run"].apply(lambda x: x["error"] == "").mean()
-        run_success_count = df["run"].apply(lambda x: x["error"] == "").sum()
-        run_average_time = df["run"].apply(lambda x: x["elapsed_secs"]).mean()
-        eval_success_rate = df["evals"].apply(lambda x: all(e["error"] == "" for e in x.values())).mean()
-        eval_average_time = df["evals"].apply(lambda x: sum(e["elapsed_secs"] for e in x.values())).mean()
+        run_success_rate = 0
+        run_success_count = 0
+        run_average_time = 0
+        eval_success_rate = 0
+        eval_average_time = 0
+        if "run" in df.columns:
+            run_success_rate = df["run"].apply(lambda x: x["error"] == "").mean()
+            run_success_count = df["run"].apply(lambda x: x["error"] == "").sum()
+            run_average_time = df["run"].apply(lambda x: x["elapsed_secs"]).mean()
+        if "evals" in df.columns:
+            eval_success_rate = df["evals"].apply(lambda x: all(e["error"] == "" for e in x.values())).mean()
+            eval_average_time = df["evals"].apply(lambda x: sum(e["elapsed_secs"] for e in x.values())).mean()
         running_stats = pd.DataFrame(
             [
                 {
@@ -230,6 +241,8 @@ class TaskRunner:
                 }
             ]
         )
+        eval_stats = pd.DataFrame()
+
         # "evals": {"exact_match": {
         #   "error": "", "outputs": {"exact_match": 1.0}, "elapsed_secs": 5.728999894927256e-06}}
         def flatten_outputs(data_row):
@@ -245,12 +258,11 @@ class TaskRunner:
                         flattened_key = f"{key}.outputs.{output_key}"
                         flattened[flattened_key] = output_value
             return flattened
-        flattened_evals = df["evals"].apply(flatten_outputs)
-        flattened_df = pd.DataFrame(flattened_evals.tolist())
-        flattened_df.fillna(0.0, inplace=True)
+        if "evals" in df.columns:
+            flattened_evals = df["evals"].apply(flatten_outputs)
+            flattened_df = pd.DataFrame(flattened_evals.tolist())
+            flattened_df.fillna(0.0, inplace=True)
 
-        if flattened_df.empty:
-            eval_stats = pd.DataFrame()
-        else:
-            eval_stats = pd.DataFrame(flattened_df).describe().T
+            if not flattened_df.empty:
+                eval_stats = pd.DataFrame(flattened_df).describe().T
         return running_stats, eval_stats
