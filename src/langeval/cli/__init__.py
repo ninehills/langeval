@@ -6,6 +6,7 @@ import click
 
 from langeval.__about__ import __version__
 from langeval.cli.application import Application
+from langeval.cli.rerun import rerun
 from langeval.cli.run import run
 from langeval.cli.show import show
 from langeval.config import AppEnvVars, ConfigEnvVars
@@ -68,6 +69,7 @@ def langeval(ctx: click.Context, verbose: int, color: Optional[bool], config_fil
 
 langeval.add_command(run)
 langeval.add_command(show)
+langeval.add_command(rerun)
 
 
 def main():  # no cov

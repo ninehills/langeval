@@ -87,6 +87,8 @@ class TaskRunner:
                 "status": self.status.value,
                 "progress": self.progress.dict(),
                 "finished_time": self.finished_time,
+                "sample": self.sample,
+                "sample_seed": self.sample_seed,
             }
         )
 
@@ -155,12 +157,24 @@ class TaskRunner:
                 self.update_task_log("[runner._run] task sample to 1 data.")
                 data_lists = random.Random(self.sample_seed).sample(data_lists, self.sample)
             total = len(data_lists)
-            self.results = [Result(inputs=d) for d in data_lists]
+            if self.results:
+                self.update_task_log(f"[runner._run] task resume from {len(self.results)} results.")
+            else:
+                self.results = [Result(inputs=d) for d in data_lists]
             if self.task.provider is not None:
                 self.update_task_log("[runner._run] provider start run.")
-                progress = TaskProgress(run=Progress(total=total), evals={})
+                # get finished result
                 new_results = []
-                for result in self.task.run_provider(self.results, self.cancel_event):
+                need_run = []
+                for result in self.results:
+                    if result.run.error or not result.run.outputs:
+                        need_run.append(result)
+                    else:
+                        new_results.append(result)
+                self.update_task_log(f"[runner._run] provider resume from {len(new_results)} results.")
+                progress = TaskProgress(run=Progress(total=total, finished=len(new_results)), evals={})
+
+                for result in self.task.run_provider(need_run, self.cancel_event):
                     if result.run.error:
                         progress.run.failed += 1
                     else:
@@ -186,9 +200,18 @@ class TaskRunner:
             progress = self.progress
             for evaluator in self.task.evaluators:
                 self.update_task_log(f"[runner._run] evaluator {evaluator.name} start run.")
-                progress.evals[evaluator.name] = Progress(total=total)
+                # get finished result
                 new_results = []
-                for result in self.task.run_eval(self.results, self.cancel_event,
+                need_run = []
+                for result in self.results:
+                    eval_result = result.evals.get(evaluator.name)
+                    if not eval_result or eval_result.error or not eval_result.outputs:
+                        need_run.append(result)
+                    else:
+                        new_results.append(result)
+                self.update_task_log(f"[runner._run] evaluator {evaluator.name} resume from {len(new_results)} results.")
+                progress.evals[evaluator.name] = Progress(total=total, finished=len(new_results))
+                for result in self.task.run_eval(need_run, self.cancel_event,
                                                  default_eval_llm=self.default_eval_llm):
                     if result.evals[evaluator.name].error:
                         progress.evals[evaluator.name].failed += 1

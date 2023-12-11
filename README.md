@@ -34,8 +34,6 @@ pip install langeval-cli
 TODOs:
 
 - Refactor RAG Eval
-- Support only-eval from run outputs.
-- Support re-run tasks.
 
 ## How to use
 
