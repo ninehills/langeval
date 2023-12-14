@@ -110,7 +110,7 @@ def _custom_parser(multiline_string: str) -> str:
     return multiline_string
 
 
-def parse_json_markdown(json_string: str, *, parser: Callable[[str], Any] = json.loads) -> dict:
+def parse_json_markdown(json_string: str, *, parser: Callable[[str], Any] = json.loads) -> Any:
     """
     Parse a JSON string from a Markdown string.
 
@@ -156,6 +156,25 @@ class SimpleJsonOutputParser:
     def _type(self) -> str:
         return "simple_json_output_parser"
 
+
+class JsonListParser:
+    """Parse the output of an LLM call to a list of JSON objects."""
+
+    def parse(self, text: str) -> Any:
+        text = text.strip()
+        try:
+            ret = parse_json_markdown(text.strip(), parser=parse_partial_json)
+        except json.JSONDecodeError as e:
+            raise OutputParserError(f"Invalid json listoutput: {text}") from e
+
+        if not isinstance(ret, list):
+            raise OutputParserError(f"Invalid json list output: {text}")
+
+        return ret
+
+    @property
+    def _type(self) -> str:
+        return "json_list_parser"
 
 class SQLParser:
     """Parse the sql output of an LLM call.

@@ -12,7 +12,7 @@ except ImportError:
 
 from langeval.models import LLM
 from langeval.providers.exception import ProviderRunError
-from langeval.providers.output_parser import OutputParserError, SimpleJsonOutputParser, SQLParser
+from langeval.providers.output_parser import JsonListParser, OutputParserError, SimpleJsonOutputParser, SQLParser
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +78,16 @@ class OutputParser(pc.BaseModel):
                         raise ProviderRunError(f"output parser failed lack keys: {text} -> {resp}")
                     final_resp[key] = resp[key]
             final_resp["_text"] = text
+            return final_resp
+        elif self.name == "json_list":
+            try:
+                resp = JsonListParser().parse(text)
+            except OutputParserError as e:
+                raise ProviderRunError(f"output parser failed {text}: {e}") from e
+            final_resp = {
+                "list": resp,
+                "_text": text,
+            }
             return final_resp
         elif self.name == "match":
             match_key = self.kwargs.get("match_key", None)
