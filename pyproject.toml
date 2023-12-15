@@ -35,6 +35,7 @@ dependencies = [
   "jieba",
   "nltk",
   "func_timeout",
+  "python-dotenv",
   "sqlalchemy"
 ]
 

@@ -3,6 +3,7 @@ import os
 from typing import Optional
 
 import click
+from dotenv import load_dotenv
 
 from langeval.__about__ import __version__
 from langeval.cli.application import Application
@@ -29,14 +30,15 @@ from langeval.config import AppEnvVars, ConfigEnvVars
     f"[env vars: `{AppEnvVars.FORCE_COLOR}`/`{AppEnvVars.NO_COLOR}`]",
 )
 @click.option(
-    "--config",
-    "config_file",
-    envvar=ConfigEnvVars.CONFIG,
-    help=f"The path to a custom config file to use [env var: `{ConfigEnvVars.CONFIG}`]",
+    "--env",
+    "env_file",
+    envvar=ConfigEnvVars.ENV_FILE,
+    default=".env",
+    help=f"The path to a custom envfile to use [env var: `{ConfigEnvVars.ENV_FILE}`], default is `.env`",
 )
 @click.version_option(version=__version__, prog_name="langeval")
 @click.pass_context
-def langeval(ctx: click.Context, verbose: int, color: Optional[bool], config_file: str):
+def langeval(ctx: click.Context, verbose: int, color: Optional[bool], env_file: str):
     """
     \b
     ▄▄▌   ▄▄▄·  ▐ ▄  ▄▄ • ▄▄▄ . ▌ ▐· ▄▄▄· ▄▄▌
@@ -56,8 +58,10 @@ def langeval(ctx: click.Context, verbose: int, color: Optional[bool], config_fil
             logging.basicConfig(level=logging.INFO)
         else:
             logging.basicConfig(level=logging.DEBUG)
-
-    app = Application(ctx.exit, verbose, color, config_file)
+    if os.path.exists(env_file):
+        click.echo("Load env file: %s" % env_file)
+        load_dotenv(env_file)
+    app = Application(ctx.exit, verbose, color)
 
     if not ctx.invoked_subcommand:
         app.display_info(ctx.get_help())

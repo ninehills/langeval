@@ -34,11 +34,8 @@ pip install langeval-cli
 TODOs:
 
 - Refactor RAG Eval
-FileNotFoundError: [Errno 2] No such file or directory:
-'output/ac17315_sqlcoder7b2_V4-fix/eval/eval_100_fix.jsonl'
-
-Progress: run=Progress(total=100, finished=100, failed=0) evals={'sqleval': Progress(total=100, finished=85, failed=0)}
-[2023-12-13T03:52:04.850620][task-2312131151-8f4e][runner._run] task eval sqleval progress {progress.evals[evaluator.name]}, result: {result}
+- Support custom output parser
+- Support more provider.
 
 ## How to use
 

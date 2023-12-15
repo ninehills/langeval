@@ -92,7 +92,8 @@ class EvalTask(pc.BaseModel):
         input_dataset_name = obj.get("input_dataset_name")
         if input_dataset_name:
             if dataset_dir:
-                path = os.path.join(dataset_dir, input_dataset_name)
+                input_dataset_base_name = os.path.basename(input_dataset_name)
+                path = os.path.join(dataset_dir, input_dataset_base_name)
             else:
                 path = input_dataset_name
             with open(path, "rb") as f:

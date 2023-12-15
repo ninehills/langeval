@@ -219,7 +219,7 @@ class TaskRunner:
                         progress.evals[evaluator.name].finished += 1
                     self.update_task_log(
                         f"[runner._run] task eval {evaluator.name} progress "
-                        "{progress.evals[evaluator.name]}, result: {result}")
+                        f"{progress.evals[evaluator.name]}, result: {result}")
                     self.update_task_progress(progress, [result])
                     new_results.append(result)
 

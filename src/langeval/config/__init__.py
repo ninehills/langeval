@@ -9,4 +9,4 @@ class AppEnvVars:
 
 class ConfigEnvVars:
     DATA_DIR = "LANGEVAL_DATA_DIR"
-    CONFIG = "LANGEVAL_CONFIG"
+    ENV_FILE = "LANGEVAL_ENV_FILE"

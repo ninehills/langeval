@@ -7,9 +7,8 @@ import click
 
 from langeval.cli.application import Application
 from langeval.cli.constant import TaskOutputVars
-from langeval.cli.run.display import save_task_merged_result, save_task_result, show_task_result
 from langeval.cli.run.run import run_task
-from langeval.tasks import EvalTask, TaskRunner, TaskRunnerStatus
+from langeval.tasks import EvalTask
 
 
 @click.command(short_help="Run evaluation task")
@@ -22,7 +21,8 @@ from langeval.tasks import EvalTask, TaskRunner, TaskRunnerStatus
     type=click.Path(exists=False),
 )
 @click.option("--sample", "-s", "sample", type=int, help="Sample size for the evaluation.")
-@click.option("--sample_seed", "-ss", "sample_seed", type=int, help="Sample seed for the evaluation. Default: 42", default=42)
+@click.option("--sample_seed", "-ss", "sample_seed", type=int, help="Sample seed for the evaluation. Default: 42",
+              default=42)
 @click.pass_obj
 def run(app: Application, task_file, output, sample, sample_seed):
     """Run evaluation task.
