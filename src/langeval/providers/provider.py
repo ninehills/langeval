@@ -1,6 +1,6 @@
 import enum
 import logging
-from typing import Any, Optional, Union
+from typing import Any, List, Optional, Union
 
 import yaml
 
@@ -10,7 +10,7 @@ except ImportError:
     import pydantic as pc
 
 
-from langeval.models import LLM
+from langeval.models import LLM, Message
 from langeval.providers.exception import ProviderRunError
 from langeval.providers.output_parser import JsonListParser, OutputParserError, SimpleJsonOutputParser, SQLParser
 
@@ -32,11 +32,18 @@ class ExecSettings(pc.BaseModel):
     kwargs: dict = {}
 
 
-class LLMSettings(pc.BaseModel):
-    """LLM settings"""
+class CompletionSettings(pc.BaseModel):
+    """Completion settings"""
 
     llm: LLM
     prompt: str
+
+
+class ChatCompletionSettings(pc.BaseModel):
+    """ChatCompletion settings"""
+
+    llm: LLM
+    messages: List[Message]
 
 
 class OutputParser(pc.BaseModel):
@@ -51,7 +58,6 @@ class OutputParser(pc.BaseModel):
     #    match_re: the regex to be matched
     kwargs: dict = {}
 
-
     def parse(self, text: str) -> dict[str, Any]:
         if self.name == "text":
             return {"text": text}
@@ -59,23 +65,28 @@ class OutputParser(pc.BaseModel):
             try:
                 resp = SQLParser().parse(text)
                 if not resp:
-                    raise ProviderRunError(f"output parser sql failed {text} -> {resp}")
+                    raise ProviderRunError(
+                        f"output parser sql failed {text} -> {resp}")
             except OutputParserError as e:
-                raise ProviderRunError(f"output parser sql failed {text}: {e}") from e
+                raise ProviderRunError(
+                    f"output parser sql failed {text}: {e}") from e
             return resp
         elif self.name == "json":
             try:
                 resp = SimpleJsonOutputParser().parse(text)
                 if not resp:
-                    raise ProviderRunError(f"output parser failed {text} -> {resp}")
+                    raise ProviderRunError(
+                        f"output parser failed {text} -> {resp}")
             except OutputParserError as e:
-                raise ProviderRunError(f"output parser failed {text}: {e}") from e
+                raise ProviderRunError(
+                    f"output parser failed {text}: {e}") from e
             keys = self.kwargs.get("output_keys", None)
             final_resp = {}
             if keys:
                 for key in keys:
                     if key not in resp:
-                        raise ProviderRunError(f"output parser failed lack keys: {text} -> {resp}")
+                        raise ProviderRunError(
+                            f"output parser failed lack keys: {text} -> {resp}")
                     final_resp[key] = resp[key]
             final_resp["_text"] = text
             return final_resp
@@ -83,7 +94,8 @@ class OutputParser(pc.BaseModel):
             try:
                 resp = JsonListParser().parse(text)
             except OutputParserError as e:
-                raise ProviderRunError(f"output parser failed {text}: {e}") from e
+                raise ProviderRunError(
+                    f"output parser failed {text}: {e}") from e
             final_resp = {
                 "list": resp,
                 "_text": text,
@@ -93,11 +105,13 @@ class OutputParser(pc.BaseModel):
             match_key = self.kwargs.get("match_key", None)
             match_re = self.kwargs.get("match_re", None)
             if not match_key or not match_re:
-                raise ProviderRunError(f"Invalid output parser: {self.name} kwargs: {self.kwargs}")
+                raise ProviderRunError(
+                    f"Invalid output parser: {self.name} kwargs: {self.kwargs}")
             import re
             match = re.search(match_re.strip(), text)
             if not match:
-                raise ProviderRunError(f"output parser failed: {text} match '{match_re.strip()}' failed")
+                raise ProviderRunError(
+                    f"output parser failed: {text} match '{match_re.strip()}' failed")
             return {match_key: match.group(1), "_text": text}
         else:
             raise ProviderRunError(f"Invalid output parser: {self.name}")
@@ -109,7 +123,7 @@ class Provider(pc.BaseModel):
     # provider types, completion, chat_completion, execute
     type: ProviderType  # noqa: A003
     input_variables: list[str]
-    settings: Union[ExecSettings, LLMSettings]
+    settings: Union[ExecSettings, CompletionSettings, ChatCompletionSettings]
     output_parser: OutputParser
 
     class Config:
@@ -118,7 +132,8 @@ class Provider(pc.BaseModel):
     @pc.validator("type")
     def type_must_be_valid(cls, v):  # noqa: N805
         if v not in [ProviderType.Completion, ProviderType.ChatCompletion, ProviderType.Execute]:
-            raise ValueError("type must be one of completion, chat_completion, execute")
+            raise ValueError(
+                "type must be one of completion, chat_completion, execute")
         return v
 
     @classmethod

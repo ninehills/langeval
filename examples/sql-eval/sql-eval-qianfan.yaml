@@ -7,6 +7,7 @@ provider:
     llm:
       provider: "qianfan"
       model: "SQLCoder-7B"
+      chat: false
       kwargs:
         temperature: 0.7
     prompt: |

@@ -8,14 +8,15 @@ import jinja2
 
 from langeval.models import ModelRunError
 from langeval.providers.exception import ProviderRunError
-from langeval.providers.provider import ExecSettings, LLMSettings, Provider
+from langeval.providers.provider import ChatCompletionSettings, CompletionSettings, ExecSettings, Provider
 
 logger = logging.getLogger(__name__)
 
 
 def call_completion(conf: Provider, inputs: dict[str, Any], timeout: int) -> dict[str, str]:
-    if conf.settings is None or not isinstance(conf.settings, LLMSettings):
-        raise ProviderRunError(f"call_completion invalid provider config: {conf}")
+    if conf.settings is None or not isinstance(conf.settings, CompletionSettings):
+        raise ProviderRunError(
+            f"call_completion invalid provider config: {conf}")
 
     prompt = jinja2.Template(conf.settings.prompt).render(**inputs)
 
@@ -30,15 +31,14 @@ def call_completion(conf: Provider, inputs: dict[str, Any], timeout: int) -> dic
 
 
 def call_chat_completion(conf: Provider, inputs: dict[str, Any], timeout: int):
-    if conf.settings is None or not isinstance(conf.settings, LLMSettings):
-        raise ProviderRunError(f"call_completion invalid provider config: {conf}")
-    messages = json.loads(conf.settings.prompt)
-    for message in messages:
-        message["content"] = jinja2.Template(message["content"]).render(**inputs)
-
+    if conf.settings is None or not isinstance(conf.settings, ChatCompletionSettings):
+        raise ProviderRunError(
+            f"call_completion invalid provider config: {conf}")
+    for message in conf.settings.messages:
+        message.content = jinja2.Template(message.content).render(**inputs)
 
     try:
-        text = conf.settings.llm.chat_completion(messages, timeout=timeout)
+        text = conf.settings.llm.chat_completion(conf.settings.messages, timeout=timeout)
     except ModelRunError as e:
         raise ProviderRunError(f"call_chat_completion failed: {e}") from e
     except Exception as e:

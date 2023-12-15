@@ -6,25 +6,22 @@ except ImportError as e:
         "Could not import qianfan python package. Please install it with `pip install qianfan`."
     ) from e
 
-from typing import Any
+from typing import Any, List
 
 from langeval.models.exception import ModelRunError
+from langeval.models.types import Message
 
 
 class Qianfan:
-    def __init__(self, model: str):
+    def __init__(self, model: str, chat: bool = True):
         self.model = model
-        completion_models = set(qianfan.Completion._supported_models().keys())
-        chat_models = set(qianfan.ChatCompletion._supported_models().keys())
-
-        if model in (completion_models - chat_models):
-            self.client = qianfan.Completion(model=model)
-        elif model in chat_models:
+        self.chat = chat
+        if chat:
             self.client = qianfan.ChatCompletion(model=model)
         else:
-            self.client = qianfan.ChatCompletion(endpoint=model)
+            self.client = qianfan.Completion(model=model)
 
-    def call(self, prompt: str, messages: list, timeout: int, **kwargs: Any) -> str:
+    def call(self, prompt: str, messages: List[Message], timeout: int, **kwargs: Any) -> str:
         try:
             if prompt:
                 messages_converted = [{"role": "user", "content": prompt}]
@@ -32,10 +29,10 @@ class Qianfan:
                 system = ""
                 messages_converted = []
                 for message in messages:
-                    if message["role"] == "system":
-                        system = message["content"]
+                    if message.role == "system":
+                        system = message.content
                         continue
-                    messages_converted.append(message)
+                    messages_converted.append({"role": message.role, "content": message.content})
                 if system:
                     kwargs["system"] = system
             if isinstance(self.client, qianfan.ChatCompletion):

@@ -9,6 +9,7 @@ except ImportError:
 from langeval.models.exception import ModelRunError
 from langeval.models.openai import OpenAI
 from langeval.models.qianfan import Qianfan
+from langeval.models.types import Message
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 class LLM(pc.BaseModel):
     provider: str
     model: str
+    chat: bool = True # Default to chat model
     # Model parameters, e.g. Qianfan has ak, sk, etc.
     kwargs: dict = {}
     instance: Any = None
@@ -30,11 +32,11 @@ class LLM(pc.BaseModel):
         """Generate completion for prompt"""
         if self.provider == "qianfan":
             if self.instance is None:
-                self.instance = Qianfan(self.model)
+                self.instance = Qianfan(self.model, self.chat)
             return self.instance.call(prompt, [], timeout, **self.kwargs)
         elif self.provider == "openai":
             if self.instance is None:
-                self.instance = OpenAI(self.model)
+                self.instance = OpenAI(self.model, self.chat)
             return self.instance.call(prompt, [], timeout, **self.kwargs)
         elif self.provider == "langchain":
             try:
@@ -57,19 +59,20 @@ class LLM(pc.BaseModel):
                 logger.debug(f"langchain completion: {prompt} -> {response}")
                 return response
             except Exception as e:
-                raise ModelRunError(f"langchain call failed: {e.__class__.__name__}({e})") from e
+                raise ModelRunError(
+                    f"langchain call failed: {e.__class__.__name__}({e})") from e
         else:
             raise ValueError(f"Invalid provider: {self.provider}")
 
-    def chat_completion(self, messages: list[dict[str, str]], timeout: int = 10) -> str:
+    def chat_completion(self, messages: list[Message], timeout: int = 10) -> str:
         """Generate chat completion for messages"""
         if self.provider == "qianfan":
             if self.instance is None:
-                self.instance = Qianfan(self.model)
+                self.instance = Qianfan(self.model, self.chat)
             return self.instance.call("", messages, timeout, **self.kwargs)
         elif self.provider == "openai":
             if self.instance is None:
-                self.instance = OpenAI(self.model)
+                self.instance = OpenAI(self.model, self.chat)
             return self.instance.call("", messages, timeout, **self.kwargs)
         elif self.provider == "langchain":
             raise ValueError("langchain does not support chat_model load yet")
