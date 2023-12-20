@@ -47,7 +47,8 @@ evaluators:
       db_url: "sqlite:///{db_name}.sqlite"
       db_name_key: "db_id"
 run_config:
-  parallelism: 1 # 并发度
+  parallelism: 5 # 并发度
   timeout: 120 # 超时时间
   rounds: 1 # 评测轮数
   batch_size: 1 # 批量运行/评测
+  query_per_second: 0.5

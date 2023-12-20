@@ -19,6 +19,7 @@ except ImportError:
 from langeval.evaluators import Evaluator
 from langeval.models import LLM
 from langeval.providers import Provider
+from langeval.tasks.ratelimiter import ThreadingRateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ class TaskRunConfig(pc.BaseModel):
     timeout: int = pc.Field(default=30, ge=1, le=600)
     rounds: int = pc.Field(default=1, ge=1, le=10)
     batch_size: int = pc.Field(default=1, ge=1, le=10000)
+    query_per_second: float = pc.Field(default=0, ge=0.1, le=100)
 
     def to_yaml(self) -> str:
         return yaml.safe_dump(self.dict(exclude_unset=True), encoding="utf-8", allow_unicode=True).decode("utf-8")
@@ -107,10 +109,12 @@ class EvalTask(pc.BaseModel):
         """Run data list with batch"""
         batch_size = self.run_config.batch_size
         batch_data_list = [data_list[i:i + batch_size] for i in range(0, len(data_list), batch_size)]
+        limiter = ThreadingRateLimiter(self.run_config.query_per_second)
+
         with ThreadPoolExecutor(max_workers=self.run_config.parallelism) as executor:
             # Submit tasks for execution
             futures = [
-                executor.submit(self.batch_run, batch_data=batch_data) for batch_data in batch_data_list
+                executor.submit(self.batch_run, batch_data=batch_data, limiter=limiter) for batch_data in batch_data_list
             ]
 
             # Collect results from completed tasks
@@ -145,26 +149,27 @@ class EvalTask(pc.BaseModel):
                     batch_result = future.result()
                     yield from batch_result
 
-    def batch_run(self, batch_data: list[Result]) -> list[Result]:
+    def batch_run(self, batch_data: list[Result], limiter: ThreadingRateLimiter) -> list[Result]:
         """Batch run data"""
         start = perf_counter()
         run_error = ""
         if self.provider is not None:
-            inputs = [data.inputs for data in batch_data]
-            try:
-                # 1. 首先调用 LLM
-                run_outputs = self.provider.batch_call(
-                    inputs, timeout=self.run_config.timeout)
-                logger.debug(f"provider call: {inputs} -> {run_outputs}")
-                for i, data in enumerate(batch_data):
-                    data.run.outputs = run_outputs[i]
-            except Exception as e:
-                logger.error(f"provider call failed: {e}", exc_info=True)
-                run_error = str(e)
+            with limiter:
+                inputs = [data.inputs for data in batch_data]
+                try:
+                    # 1. 首先调用 LLM
+                    run_outputs = self.provider.batch_call(
+                        inputs, timeout=self.run_config.timeout)
+                    logger.debug(f"provider call: {inputs} -> {run_outputs}")
+                    for i, data in enumerate(batch_data):
+                        data.run.outputs = run_outputs[i]
+                except Exception as e:
+                    logger.error(f"provider call failed: {e}", exc_info=True)
+                    run_error = str(e)
 
-            for data in batch_data:
-                data.run.error = run_error
-                data.run.elapsed_secs = perf_counter() - start
+                for data in batch_data:
+                    data.run.error = run_error
+                    data.run.elapsed_secs = perf_counter() - start
         return batch_data
 
     def batch_eval(self,
