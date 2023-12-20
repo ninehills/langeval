@@ -17,9 +17,15 @@ class Qianfan:
         self.model = model
         self.chat = chat
         if chat:
-            self.client = qianfan.ChatCompletion(model=model)
+            if model.startswith("endpoint/"):
+                self.client = qianfan.ChatCompletion(endpoint=model.split("/")[-1])
+            else:
+                self.client = qianfan.ChatCompletion(model=model)
         else:
-            self.client = qianfan.Completion(model=model)
+            if model.startswith("endpoint/"):
+                self.client = qianfan.Completion(endpoint=model.split("/")[-1])
+            else:
+                self.client = qianfan.Completion(model=model)
 
     def call(self, prompt: str, messages: List[Message], timeout: int, **kwargs: Any) -> str:
         try:
