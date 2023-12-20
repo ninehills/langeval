@@ -82,12 +82,14 @@ class OutputParser(pc.BaseModel):
                     f"output parser failed {text}: {e}") from e
             keys = self.kwargs.get("output_keys", None)
             final_resp = {}
-            if keys:
+            if keys is not None:
                 for key in keys:
                     if key not in resp:
                         raise ProviderRunError(
                             f"output parser failed lack keys: {text} -> {resp}")
                     final_resp[key] = resp[key]
+            else:
+                final_resp = resp.copy()
             final_resp["_text"] = text
             return final_resp
         elif self.name == "json_list":
