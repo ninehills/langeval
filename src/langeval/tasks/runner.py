@@ -209,9 +209,9 @@ class TaskRunner:
                         need_run.append(result)
                     else:
                         new_results.append(result)
-                self.update_task_log(f"[runner._run] evaluator {evaluator.name} resume from {len(new_results)} results.")
+                self.update_task_log(f"[runner._run] evaluator {evaluator.name} resume from {len(new_results)} results, need run {len(need_run)} results.")
                 progress.evals[evaluator.name] = Progress(total=total, finished=len(new_results))
-                for result in self.task.run_eval(need_run, self.cancel_event,
+                for result in self.task.run_eval(evaluator, need_run, self.cancel_event,
                                                  default_eval_llm=self.default_eval_llm):
                     if result.evals[evaluator.name].error:
                         progress.evals[evaluator.name].failed += 1

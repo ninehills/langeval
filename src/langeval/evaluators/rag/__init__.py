@@ -68,7 +68,7 @@ def retrieval_recall(rag: Rag, kwargs: dict[str, Any], timeout, default_llm):   
     reference_context = kwargs["reference_context"]
     if len(contexts) == 0:
         return {
-            "retrieval_recall_ndgc_10": 0.0,
+            #"retrieval_recall_ndgc_10": 0.0,
             "retrieval_recall_hit_rate": 0.0,
             "retrieval_recall_mrr": 0.0
         }
@@ -77,7 +77,7 @@ def retrieval_recall(rag: Rag, kwargs: dict[str, Any], timeout, default_llm):   
     # 假设 reference_context 和 contexts 是同一批语料的不同切分形式，所以不需要语义相似度，而是比对文本相似度。
     # 使用修改后的 Overlap Coefficient 算法计算相似度。取值范围是 0-1
     # 这种算法，当 contexts 包含 reference_context 时，得分是 1。
-    true_relevance: list[float] = []
+    #true_relevance: list[float] = []
     # 如下是假设 reference_context 和 contexts 是相同语料。
     hit_rate = 0.0 # 代表 reference_context 是否在 contexts 中精确匹配。
     mrr = 0.0 # 计算 reference_context 的精确匹配位置，首位为 1.0，次位为 0.5，以此类推。
@@ -87,18 +87,18 @@ def retrieval_recall(rag: Rag, kwargs: dict[str, Any], timeout, default_llm):   
             if mrr == 0:
                 # if 是避免 contexts 中有重复内容。
                 mrr = 1.0 / (i + 1)
-        true_relevance.append(overlap_coefficient_contain(
-            context, reference_context
-        ))
+        #true_relevance.append(overlap_coefficient_contain(
+        #    context, reference_context
+        #))
     # scores 的绝对值没有意义，只要是倒序排列就行。
-    scores = list(range(len(contexts), 0, -1))
+    # scores = list(range(len(contexts), 0, -1))
     # k = 10 代表只统计前 10 个结果
-    ndgc_10 = ndcg_score([true_relevance], [scores], k=10) # type: ignore
+    # ndgc_10 = ndcg_score([true_relevance], [scores], k=10) # type: ignore
 
     return {
         "retrieval_recall_hit_rate": hit_rate,
         "retrieval_recall_mrr": mrr,
-        "retrieval_recall_ndgc_10": ndgc_10,
+        #"retrieval_recall_ndgc_10": ndgc_10,
     }
 
 def answer_correctness(rag: Rag, kwargs: dict[str, Any], timeout, default_llm):

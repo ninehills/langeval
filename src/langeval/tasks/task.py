@@ -125,29 +125,28 @@ class EvalTask(pc.BaseModel):
                 yield from batch_result
 
 
-    def run_eval(self, data_list: list[Result], stop_event: threading.Event, default_eval_llm: Optional[LLM] = None):
+    def run_eval(self, evaluator: Evaluator, data_list: list[Result], stop_event: threading.Event, default_eval_llm: Optional[LLM] = None):
         """Eval data list with batch"""
         # TODO seperate eval run config
         batch_size = self.run_config.batch_size
         batch_data_list = [data_list[i:i + batch_size] for i in range(0, len(data_list), batch_size)]
-        for evaluator in self.evaluators:
-            with ThreadPoolExecutor(max_workers=self.run_config.parallelism) as executor:
-                # Submit tasks for execution
-                futures = [
-                    executor.submit(
-                        self.batch_eval,
-                        evaluator=evaluator,
-                        batch_data=batch_data,
-                        default_eval_llm=default_eval_llm,
-                    ) for batch_data in batch_data_list
-                ]
+        with ThreadPoolExecutor(max_workers=self.run_config.parallelism) as executor:
+            # Submit tasks for execution
+            futures = [
+                executor.submit(
+                    self.batch_eval,
+                    evaluator=evaluator,
+                    batch_data=batch_data,
+                    default_eval_llm=default_eval_llm,
+                ) for batch_data in batch_data_list
+            ]
 
-                # Collect results from completed tasks
-                for future in as_completed(futures):
-                    if stop_event.is_set():
-                        return
-                    batch_result = future.result()
-                    yield from batch_result
+            # Collect results from completed tasks
+            for future in as_completed(futures):
+                if stop_event.is_set():
+                    return
+                batch_result = future.result()
+                yield from batch_result
 
     def batch_run(self, batch_data: list[Result], limiter: ThreadingRateLimiter) -> list[Result]:
         """Batch run data"""
