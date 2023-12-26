@@ -26,10 +26,13 @@ def _retrieve_with_scores(query: str) -> List[Tuple[Document, float]]:
 
 
 inputs = json.loads(sys.stdin.read())
-docs_with_score = _retrieve_with_scores(inputs["question"])
-result_formatted = {
-    "contexts": [i[0].page_content for i in docs_with_score],
-    "contexts_scores": [i[1] for i in docs_with_score],
-}
+results = []
+for row in inputs:
+    docs_with_score = _retrieve_with_scores(row["question"])
+    result_formatted = {
+        "contexts": [i[0].page_content for i in docs_with_score],
+        "contexts_scores": [i[1] for i in docs_with_score],
+    }
+    results.append(json.dumps(result_formatted, ensure_ascii=False))
 
-print(json.dumps(result_formatted, ensure_ascii=False, indent=2))
+print(json.dumps(results, ensure_ascii=False, indent=2))

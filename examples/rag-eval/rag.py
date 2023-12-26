@@ -68,9 +68,10 @@ for i in json.loads(sys.stdin.read()):
         "question": i["question"]
     }
     result = final_chain.invoke(inputs)
-    final_results.append({
+    final_results.append(json.dumps({
         "answer": result["answer"].content,
         "contexts": [i[0].page_content for i in result["docs_with_score"]],
         "contexts_scores": [i[1] for i in result["docs_with_score"]],
-    })
+    }, ensure_ascii=False))
+
 print(json.dumps(final_results, ensure_ascii=False, indent=2))

@@ -1,0 +1,24 @@
+provider:
+  type: "execute"
+  input_variables: ["question"]
+  output_parser:
+    name: json
+  settings:
+    command: "python3 rag.py"
+    kwargs:
+      timeout: 50
+input_dataset_name: "cmrc-eval-zh.jsonl"
+evaluators:
+  - name: rag
+    type: RAG
+    settings:
+      rag_metrics: ["retrieval_recall", "answer_correctness"]
+      rag_llm:
+        provider: "openai"
+        model: "gpt-4"
+        kwargs:
+          temperature: 0.2
+run_config:
+  parallelism: 10  # 并发度
+  timeout: 60 # 超时时间
+  rounds: 1 # 评测轮数

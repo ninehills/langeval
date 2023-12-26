@@ -68,7 +68,7 @@ def retrieval_recall(rag: Rag, kwargs: dict[str, Any], timeout, default_llm):   
     reference_context = kwargs["reference_context"]
     if len(contexts) == 0:
         return {
-            "retrieval_recall": 0.0,
+            "retrieval_recall_ndgc_10": 0.0,
             "retrieval_recall_hit_rate": 0.0,
             "retrieval_recall_mrr": 0.0
         }
@@ -96,7 +96,7 @@ def retrieval_recall(rag: Rag, kwargs: dict[str, Any], timeout, default_llm):   
     ndgc_10 = ndcg_score([true_relevance], [scores], k=10) # type: ignore
 
     return {
-        "retrieval_recall": hit_rate,
+        "retrieval_recall_hit_rate": hit_rate,
         "retrieval_recall_mrr": mrr,
         "retrieval_recall_ndgc_10": ndgc_10,
     }
