@@ -110,11 +110,11 @@ class OutputParser(pc.BaseModel):
                 raise ProviderRunError(
                     f"Invalid output parser: {self.name} kwargs: {self.kwargs}")
             import re
-            match = re.search(match_re.strip(), text)
+            match = re.search(re.compile(match_re.strip()), text)
             if not match:
                 raise ProviderRunError(
                     f"output parser failed: {text} match '{match_re.strip()}' failed")
-            return {match_key: match.group(1), "_text": text}
+            return {match_key: match.group(), "_text": text}
         else:
             raise ProviderRunError(f"Invalid output parser: {self.name}")
 

@@ -6,7 +6,7 @@ provider:
     kwargs:
       match_key: "choice"
       match_re: |
-        最终选项[:：]\s*([ABCD])
+        [ABCD](?!.*[ABCD])
   settings:
     llm:
       provider: "openai"
