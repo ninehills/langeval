@@ -19,6 +19,7 @@ def call_completion(conf: Provider, inputs: dict[str, Any], timeout: int) -> dic
             f"call_completion invalid provider config: {conf}")
 
     prompt = jinja2.Template(conf.settings.prompt).render(**inputs)
+    logger.info(f"call_completion: prompt={prompt}")
 
     try:
         text = conf.settings.llm.completion(prompt, timeout=timeout)
@@ -36,6 +37,7 @@ def call_chat_completion(conf: Provider, inputs: dict[str, Any], timeout: int):
             f"call_completion invalid provider config: {conf}")
     for message in conf.settings.messages:
         message.content = jinja2.Template(message.content).render(**inputs)
+    logger.info(f"call_chat_completion: messages={conf.settings.messages}")
 
     try:
         text = conf.settings.llm.chat_completion(conf.settings.messages, timeout=timeout)
