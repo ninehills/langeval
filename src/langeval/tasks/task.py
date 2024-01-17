@@ -130,6 +130,7 @@ class EvalTask(pc.BaseModel):
         # TODO seperate eval run config
         batch_size = self.run_config.batch_size
         batch_data_list = [data_list[i:i + batch_size] for i in range(0, len(data_list), batch_size)]
+        limiter = ThreadingRateLimiter(self.run_config.query_per_second)
         with ThreadPoolExecutor(max_workers=self.run_config.parallelism) as executor:
             # Submit tasks for execution
             futures = [
@@ -137,6 +138,7 @@ class EvalTask(pc.BaseModel):
                     self.batch_eval,
                     evaluator=evaluator,
                     batch_data=batch_data,
+                    limiter=limiter,
                     default_eval_llm=default_eval_llm,
                 ) for batch_data in batch_data_list
             ]
@@ -174,27 +176,29 @@ class EvalTask(pc.BaseModel):
     def batch_eval(self,
                    evaluator: Evaluator,
                    batch_data: list[Result],
+                   limiter: ThreadingRateLimiter,
                    default_eval_llm: Optional[LLM] = None) -> list[Result]:
         start = perf_counter()
         run_error = ""
-        for data in batch_data:
-            data.evals[evaluator.name] = EvalResult()
-        try:
-            eval_outputs = evaluator.batch_call(
-                batch_inputs=[data.inputs for data in batch_data],
-                batch_outputs=[data.run.outputs for data in batch_data],
-                timeout=self.run_config.timeout,
-                default_llm=default_eval_llm,
-            )
-            for i, data in enumerate(batch_data):
-                data.evals[evaluator.name].outputs = eval_outputs[i]
-        except Exception as e:
-            logger.warning(f"evaluator call failed: {e}", exc_info=True)
-            run_error = str(e)
+        with limiter:
+            for data in batch_data:
+                data.evals[evaluator.name] = EvalResult()
+            try:
+                eval_outputs = evaluator.batch_call(
+                    batch_inputs=[data.inputs for data in batch_data],
+                    batch_outputs=[data.run.outputs for data in batch_data],
+                    timeout=self.run_config.timeout,
+                    default_llm=default_eval_llm,
+                )
+                for i, data in enumerate(batch_data):
+                    data.evals[evaluator.name].outputs = eval_outputs[i]
+            except Exception as e:
+                logger.warning(f"evaluator call failed: {e}", exc_info=True)
+                run_error = str(e)
 
-        for data in batch_data:
-            data.evals[evaluator.name].error = run_error
-            data.evals[evaluator.name].elapsed_secs = perf_counter() - start
+            for data in batch_data:
+                data.evals[evaluator.name].error = run_error
+                data.evals[evaluator.name].elapsed_secs = perf_counter() - start
         return batch_data
 
     def split_dataset(self) -> list[dict[str, Any]]:
