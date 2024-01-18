@@ -130,7 +130,7 @@ class EvalTask(pc.BaseModel):
         # TODO seperate eval run config
         batch_size = self.run_config.batch_size
         batch_data_list = [data_list[i:i + batch_size] for i in range(0, len(data_list), batch_size)]
-        limiter = ThreadingRateLimiter(self.run_config.query_per_second)
+        limiter = ThreadingRateLimiter(evaluator.query_per_second)
         with ThreadPoolExecutor(max_workers=self.run_config.parallelism) as executor:
             # Submit tasks for execution
             futures = [

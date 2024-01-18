@@ -76,6 +76,8 @@ class Evaluator(pc.BaseModel):
     type: EvaluatorType  # noqa: A003
     # Detail config
     settings: Optional[Union[Rag, LLMGrade, EmbeddingCosSim, PythonCode, NLP, SQLEvaluator]] = None
+    # Rate limit
+    query_per_second: float = pc.Field(default=0, ge=0.1, le=100)
 
     def to_yaml(self) -> str:
         return yaml.dump(self.dict(exclude_unset=True), encoding="utf-8", allow_unicode=True).decode("utf-8")
